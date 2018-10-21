@@ -1,8 +1,9 @@
+import os.path
 
 def read_raw_data(file):
     res ={}
     # TODO use proper file path pacakge
-    with open(file, 'r', encoding='utf-8') as f:
+    with open(__dir__(file), 'r', encoding='utf-8') as f:
          for line in f:
              # TODO split line
              print(line)
