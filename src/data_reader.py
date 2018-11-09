@@ -5,6 +5,8 @@ import json
 import pickle
 
 class DataReader:
+    def __init__(self):
+        self.dir = Path(__file__).parent.parent
 
     def read_raw_data(self, file):
         # example line:
@@ -49,12 +51,12 @@ class DataReader:
         return res
 
     def save2pickle(self, file):
-        with open(Path.joinpath(dir, file), 'wb') as handle:
+        with open(Path.joinpath(self.dir, file), 'wb') as handle:
             pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
         return 'Saved the data to pickle.'
 
     def save2json(self, file):
-        with open(Path.joinpath(dir, file), 'w', encoding='utf-8') as outfile:
+        with open(Path.joinpath(self.dir, file), 'w', encoding='utf-8') as outfile:
             json.dump(result, outfile, sort_keys=True)
         return 'Saved the data to json file.'
 
