@@ -1,7 +1,12 @@
 import re
 from pathlib import Path
+import pprint as pp
+import json
+import pickle
 
 class DataReader:
+    def __init__(self):
+        self.dir = Path(__file__).parent.parent
 
     def read_raw_data(self, file):
         # example line:
@@ -45,11 +50,33 @@ class DataReader:
         res = {'sentence': sentence, 'triple': triple, 'factuality': fact, 'entity': entity, 'aspect': aspect}
         return res
 
+    def save2pickle(self, file):
+        with open(Path.joinpath(self.dir, file), 'wb') as handle:
+            pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        return 'Saved the data to pickle.'
+
+    def save2json(self, file):
+        with open(Path.joinpath(self.dir, file), 'w', encoding='utf-8') as outfile:
+            json.dump(result, outfile, sort_keys=True)
+        return 'Saved the data to json file.'
 
 if __name__ == '__main__':
 
     input_file = "data/subjlink.txt"
-    input_dir = Path.joinpath(Path(__file__).parent.parent, input_file)
+    dir = Path(__file__).parent.parent
+    input_dir = Path.joinpath(dir, input_file)
+    output_file_1 = 'data/data_eal.pickle'
+    output_file_2 = 'data/data_eal.json'
     reader = DataReader()
     result = reader.read_raw_data(input_dir)
-    # TODO maybe save dict? then how to read directly?
+    reader.save2json(output_file_2)
+    reader.save2pickle(output_file_1)
+
+    # # load
+    # with open(Path.joinpath(dir, output_file_2), 'r', encoding='utf-8') as f:
+    #     data = json.load(f)
+
+    # load
+    with open(Path.joinpath(dir, output_file_1), 'rb') as handle:
+        data = pickle.load(handle)
+
