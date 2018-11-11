@@ -3,10 +3,17 @@ from pathlib import Path
 import pprint as pp
 import json
 import pickle
+import logging
+import time
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
+logger.setLevel(logging.INFO)
 
 class DataReader:
-    def __init__(self):
-        self.dir = Path(__file__).parent.parent
 
     def read_raw_data(self, file):
         # example line:
@@ -18,6 +25,7 @@ class DataReader:
             for line in f:
                 sample = self.extract_sample(line)
                 res.append(sample)
+        logger.info('The data has been extracted.')
         return res
 
     def extract_sample(self, line):
@@ -50,33 +58,34 @@ class DataReader:
         res = {'sentence': sentence, 'triple': triple, 'factuality': fact, 'entity': entity, 'aspect': aspect}
         return res
 
-    def save2pickle(self, file):
-        with open(Path.joinpath(self.dir, file), 'wb') as handle:
+    def save2pickle(self, file,result):
+        with open(file, 'wb') as handle:
             pickle.dump(result, handle, protocol=pickle.HIGHEST_PROTOCOL)
-        return 'Saved the data to pickle.'
 
-    def save2json(self, file):
-        with open(Path.joinpath(self.dir, file), 'w', encoding='utf-8') as outfile:
+
+    def save2json(self, file, result):
+        with open(file, 'w', encoding='utf-8') as outfile:
             json.dump(result, outfile, sort_keys=True)
-        return 'Saved the data to json file.'
+
 
 if __name__ == '__main__':
 
-    input_file = "data/subjlink.txt"
     dir = Path(__file__).parent.parent
-    input_dir = Path.joinpath(dir, input_file)
-    output_file_1 = 'data/data_eal.pickle'
-    output_file_2 = 'data/data_eal.json'
-    reader = DataReader()
-    result = reader.read_raw_data(input_dir)
-    reader.save2json(output_file_2)
-    reader.save2pickle(output_file_1)
 
-    # # load
+    input_file = Path.joinpath(dir, "data/subjlik.txt")
+    output_file = Path.joinpath(dir, 'data/data_eal.json')
+
+    reader = DataReader()
+    result = reader.read_raw_data(input_file)
+    reader.save2json(output_file, result)
+    logger.info('Saved the data to ' + output_file)
+    #reader.save2pickle(output_file_1)
+
+    ## load
     # with open(Path.joinpath(dir, output_file_2), 'r', encoding='utf-8') as f:
     #     data = json.load(f)
 
     # load
-    with open(Path.joinpath(dir, output_file_1), 'rb') as handle:
-        data = pickle.load(handle)
+    # with open(Path.joinpath(dir, output_file_1), 'rb') as handle:
+    #     data = pickle.load(handle)
 
