@@ -55,7 +55,6 @@ class EntityPage:
                 self.page_dict[h2_str] = content
             except Exception as e:
                 logger.info(e)
-                pass
 
     #  TODO collect contents b4 the first h2 -- summary
     def get_h2_list(self):
