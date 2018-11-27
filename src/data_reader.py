@@ -4,7 +4,6 @@ import pprint as pp
 import json
 import pickle
 import logging
-import time
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -55,7 +54,7 @@ class DataReader:
             entity = 'None'
         if not aspect:
             aspect = 'None'
-        res = {'sentence': sentence, 'triple': triple, 'factuality': fact, 'entity': entity, 'aspect': aspect}
+        res = {'sentence': sentence, 'entity': entity, 'aspect': aspect, 'triple': triple, 'factuality': fact}
         return res
 
     def save2pickle(self, file,result):
@@ -65,25 +64,29 @@ class DataReader:
 
     def save2json(self, file, result):
         with open(file, 'w', encoding='utf-8') as outfile:
-            json.dump(result, outfile, sort_keys=True)
+            json.dump(result, outfile)
 
 
 if __name__ == '__main__':
 
     dir = Path(__file__).parent.parent
 
-    input_file = Path.joinpath(dir, "data/subjlik.txt")
-    output_file = Path.joinpath(dir, 'data/data_eal.json')
+    input_file = Path.joinpath(dir, "data/subjlink.txt")
+    output_folder = Path.joinpath(dir, 'output')
+
+    if not Path(output_folder).is_dir():
+        Path(output_folder).mkdir()
 
     reader = DataReader()
     result = reader.read_raw_data(input_file)
-    reader.save2json(output_file, result)
-    logger.info('Saved the data to ' + output_file)
+    reader.save2json(Path.joinpath(dir, 'output/sentences_eal_subj.json'), result)
+    logger.info('Saved the data.')
     #reader.save2pickle(output_file_1)
 
-    ## load
-    # with open(Path.joinpath(dir, output_file_2), 'r', encoding='utf-8') as f:
-    #     data = json.load(f)
+    # load
+    with open(Path.joinpath(dir, 'output/sentences_eal_subj.json'), 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    print(data[0])
 
     # load
     # with open(Path.joinpath(dir, output_file_1), 'rb') as handle:
