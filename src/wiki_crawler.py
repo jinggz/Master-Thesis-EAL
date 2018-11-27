@@ -47,6 +47,7 @@ class EntityPage:
 
         body = self.soup.find(id='bodyContent')
         for idx, h2 in enumerate(body.find_all('h2')):
+            #TODO get summary, skip infobox
             if h2.text in ['Contents', 'References', 'External links']:
                 continue
             nextNode = h2.next_sibling
