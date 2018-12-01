@@ -34,6 +34,7 @@ class EntityPage:
     def retrieve_wiki_page(self, entity):
         # To connect and extract the page content of the Wiki Page of the entity
         connection = self.get_connection(entity)
+        logger.info('got connection successfully')
         if connection:
             source = connection.read()
             soup = bs.BeautifulSoup(source, 'lxml')
@@ -43,35 +44,63 @@ class EntityPage:
             [x.extract() for x in soup.find_all(class_='image')]
             self.soup = soup
 
-    def get_page_dict_4_entity(self):
+    def build_page_dict(self):
 
         body = self.soup.find(id='bodyContent')
-        for idx, h2 in enumerate(body.find_all('h2')):
-            #TODO get summary, skip infobox
-            if h2.text in ['Contents', 'References', 'External links']:
-                continue
+        h2_list = self.get_h2_list()
+
+        # extract the lead paragraphs before the first heading
+        start = body.find(class_='mw-parser-output')
+        leading = []
+        for chi in start.children:
+            if chi.name == 'p':
+                leading.append(chi.text.strip())
+            if chi.name == 'h2':
+                break
+        leading = " ".join(leading)
+        self.page_dict['summary'] = leading
+        # extract h2 headings and its content, entities and sub headings
+        for h2 in h2_list:
             nextNode = h2.next_sibling
             p = []
             links = []
+            heads = []
             while nextNode and nextNode.name != 'h2':
-                if isinstance(nextNode, bs.element.NavigableString):
-                    if nextNode.string.strip():
-                        p.append(nextNode.string.strip())
-                else:
+                if not isinstance(nextNode, bs.element.NavigableString):
                     p.append(nextNode.text.strip())
                     for link in nextNode.find_all('a', href=self.__not_file):
                         links.append(urllib.parse.unquote((link.get('href'))))
+                    # get sub heads within a h2 head
+                    if nextNode.name in ['h3', 'h4', 'h5', 'h6']:
+                        heads.append(nextNode.text.strip().lower())
                 nextNode = nextNode.next_sibling
             links = " ".join(links)
             contents = " ".join(p)
-            self.page_dict[h2.text] = {'content': contents, 'links': links}
+            self.page_dict[h2.text.strip().lower()] = {'content': contents, 'links': links, 'heads': heads}
 
 
-    #  useless for now
     def get_h2_list(self):
+        # http://trec-car.cs.unh.edu/process/dataselection.html
+        # extract all h2 headings of a Wiki page and remove frequent headings like 'see also' etc.
+        h_remove = ["see also", "contents",
+                    "references",
+                    "external links",
+                    "notes",
+                    "bibliography",
+                    "gallery",
+                    "publications",
+                    "further reading",
+                    "track listing",
+                    "sources",
+                    "cast",
+                    "discography",
+                    "awards",
+                    "other"]
+        body = self.soup.find(id='bodyContent')
         h2_set = []
-        for h2 in self.soup.find_all('h2'):
-            h2_set.append(h2)
+        for h2 in body.find_all('h2'):
+            if not h2.text.strip().lower() in h_remove:
+                h2_set.append(h2)
         return h2_set
 
     #useless for now
@@ -122,18 +151,19 @@ if __name__ == '__main__':
     logger.info('Remove empty entity')
 
     # begin crawling
-    entity_sect_text_dict = dict()
+    wiki_dict = dict()
     logger.info('Start to create dictionary for Wiki page... ')
-    entities=list(entities)
-    for i in range(0, 1):
+    entities = list(entities)
+    for entity in entities:
         instance = EntityPage()
-        instance.retrieve_wiki_page(entities[i])
+        instance.retrieve_wiki_page(entity)
         if instance.soup:
-            instance.get_page_dict_4_entity()
+            instance.build_page_dict()
+        wiki_dict[entity] = instance.page_dict
 
-            #save
-            saver = DataReader()
-            saver.save2json(Path.joinpath(output_file, entities[i] + '.json'), instance.page_dict)
+    #TODO save the entire dic
+    saver = DataReader()
+    saver.save2json(Path.joinpath(output_file, entities[i] + '.json'), instance.page_dict)
 
 
 
