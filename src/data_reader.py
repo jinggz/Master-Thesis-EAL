@@ -66,6 +66,8 @@ class DataReader:
         with open(file, 'w', encoding='utf-8') as outfile:
             json.dump(result, outfile)
 
+    def get_file_dir(self):
+        return Path(__file__).parent.parent
 
 if __name__ == '__main__':
 
