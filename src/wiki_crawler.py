@@ -34,7 +34,6 @@ class EntityPage:
     def retrieve_wiki_page(self, entity):
         # To connect and extract the page content of the Wiki Page of the entity
         connection = self.get_connection(entity)
-        logger.info('got connection successfully')
         if connection:
             source = connection.read()
             soup = bs.BeautifulSoup(source, 'lxml')
@@ -58,7 +57,7 @@ class EntityPage:
             if chi.name == 'h2':
                 break
         leading = " ".join(leading)
-        self.page_dict['summary'] = leading
+        self.page_dict['lead_paragraphs'] = leading
         # extract h2 headings and its content, entities and sub headings
         for h2 in h2_list:
             nextNode = h2.next_sibling
@@ -67,11 +66,13 @@ class EntityPage:
             heads = []
             while nextNode and nextNode.name != 'h2':
                 if not isinstance(nextNode, bs.element.NavigableString):
-                    p.append(nextNode.text.strip())
+                    if nextNode.name == 'p':
+                        p.append(nextNode.text.strip())
                     for link in nextNode.find_all('a', href=self.__not_file):
                         links.append(urllib.parse.unquote((link.get('href'))))
                     # get sub heads within a h2 head
                     if nextNode.name in ['h3', 'h4', 'h5', 'h6']:
+                        p.append(nextNode.text.strip())
                         heads.append(nextNode.text.strip().lower())
                 nextNode = nextNode.next_sibling
             links = " ".join(links)
@@ -134,10 +135,9 @@ if __name__ == '__main__':
 
     dir = Path(__file__).parent.parent
     input_file = Path.joinpath(dir, 'output/sentences_eal_subj.json')
-    output_file = Path.joinpath(dir, 'output/entity_dict/')
-    if not Path(output_file).is_dir():
-            Path(output_file).mkdir()
-
+    # output_file = Path.joinpath(dir, 'output/entity_dict/')
+    # if not Path(output_file).is_dir():
+    #         Path(output_file).mkdir()
 
     # load the data
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -152,27 +152,22 @@ if __name__ == '__main__':
 
     # begin crawling
     wiki_dict = dict()
-    logger.info('Start to create dictionary for Wiki page... ')
-    entities = list(entities)
+    logger.info('Start to create dictionary for Wiki pages... ')
+    #entities = list(entities)
     for entity in entities:
         instance = EntityPage()
         instance.retrieve_wiki_page(entity)
         if instance.soup:
             instance.build_page_dict()
-        wiki_dict[entity] = instance.page_dict
+        wiki_dict[entity.lower()] = instance.page_dict
+    logger.info('Finished the creation for dictionary of Wikipedia pages')
 
-    #TODO save the entire dic
     saver = DataReader()
-    saver.save2json(Path.joinpath(output_file, entities[i] + '.json'), instance.page_dict)
-
-
-
-    #         #logger.info('Saved the dictionary of %s to %s.' % (entity, output_file) )
-    logger.info('Finished dictionary creation.')
-
-    # pp.pprint(entity_sect_text_dict['Cello Suites (Bach)'])
+    saver.save2json(Path.joinpath(dir, 'output/wiki.json'), wiki_dict)
+    logger.info('Saved the dictionary of entities to file.')
     # saver = DataReader()
-    # saver.save2json(Path.joinpath(dir, 'output/entity_dicts.json'), entity_sect_text_dict)
-    # logger.info('Saved the dictionary of entities to file.')
+    # saver.save2json(Path.joinpath(output_file, entities[i] + '.json'), instance.page_dict)
+    # pp.pprint(entity_sect_text_dict['Cello Suites (Bach)'])
+
 
 
