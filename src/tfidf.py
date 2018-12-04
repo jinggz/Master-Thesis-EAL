@@ -1,5 +1,7 @@
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 # from nltk.corpus import stopwords
 from data_reader import DataReader
 from pathlib import Path
@@ -29,7 +31,9 @@ class Tfidf:
         # save model
         reader = DataReader()
         dir = reader.get_file_dir()
-        with open(Path.joinpath(dir, 'output/wiki-idfs.pkl'), "wb") as f:
+        with open(Path.joinpath(dir, 'output/tfidf_model_content.pkl'), 'wb') as f:
+            pickle.dump(tfidf_model, f)
+        with open(Path.joinpath(dir, 'output/tfidf_idfs_content.pkl'), "wb") as f:
             pickle.dump(idfs, f)
         logger.info('tfidf model saved')
 
@@ -41,6 +45,7 @@ class Tfidf:
         return data
 
     def build_corpus(self):
+        # each aspect is regarded as a doc
         corpus = []
         data = self.load_corpus()
         for entity in data.values():
@@ -52,16 +57,21 @@ class Tfidf:
     def load_tfidf_model(self):
         reader = DataReader()
         dir = reader.get_file_dir()
-        with open(Path.joinpath(dir, 'output/wiki-idfs.pkl'), "rb") as f:
+        with open(Path.joinpath(dir, 'output/tfidf_model_content.pkl'), 'rb') as f:
             tfidf_model = pickle.load(f)
-        return tfidf_model
+        with open(Path.joinpath(dir, 'output/tfidf_idfs_content.pkl'), "rb") as f:
+            idfs = pickle.load(f)
+        return tfidf_model, idfs
 
     def get_tfidf(self, doc):
         # Create new tfidfVectorizer with old vocabulary
-        tfidf_new = self.load_tfidf_model
+        tfidf_model, idfs = self.load_tfidf_model
         # TODO cant transform directly
-        X_tf1 = tfidf_new.transform(doc)
-        return X_tf1
+        X_vector = tfidf_model.transform(doc)
+        return X_vector
+
+    def cos_sim(self, a, b):
+        return cosine_similarity(a, b).flatten()
 
 if __name__ == '__main__':
     # one time execution
