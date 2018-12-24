@@ -113,12 +113,8 @@ class EntityPage:
     def __not_file(self, href):
         return href and not re.compile("File").search(href) and re.compile("wiki").search(href)
 
+def build_dict_training():
 
-if __name__ == '__main__':
-
-    ####################
-    # PART 1: training, build large dictionary for training data
-    ####################
     dir = Path(__file__).parent.parent
     input_file = Path.joinpath(dir, 'output/sentences_eal_subj.json')
     # load the data
@@ -146,12 +142,20 @@ if __name__ == '__main__':
     with open(Path.joinpath(dir, 'output/wiki.json'), 'w', encoding='utf-8') as outfile:
         json.dump(wiki_dict, outfile)
     logger.info('Saved the dictionary of entities to file.')
+
+if __name__ == '__main__':
+
     ####################
-    # PART 2: for service testing
+    # PART 1: for training -- build large dictionary for training data
+    ####################
+    build_dict_training()
+
+    ####################
+    # PART 2: for service -- testing
     ####################
     while True:
         term = input('enter entity: ')
-        EP=EntityPage(term)
+        EP = EntityPage(term)
         if EP.soup:
             EP.build_page_dict()
         pprint(EP.page_dict)
