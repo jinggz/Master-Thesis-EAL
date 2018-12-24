@@ -2,13 +2,10 @@ from pathlib import Path
 import bs4 as bs
 import urllib.request
 from urllib.parse import quote
-import time
-import pprint as pp
 import logging
 import json
 import re
-
-from data_reader import DataReader
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -18,11 +15,17 @@ logging.basicConfig(
 logger.setLevel(logging.INFO)
 
 class EntityPage:
-    def __init__(self):
+    def __init__(self, entity):
+        '''
+        :param page_dict: the dictionary of aspects crawled from wikipedia
+        :param soup: a Beautifulsoup object
+        :param entity: a string represented an entity
+        '''
         self.page_dict = dict()
         self.soup = None
+        self.retrieve_wiki_page(entity)
 
-    def get_connection(self, entity):
+    def __get_connection(self, entity):
         try:
             # example: https://en.wikipedia.org/wiki/Segal%E2%80%93Bargmann_space
             connection = urllib.request.urlopen('https://en.wikipedia.org/wiki/' + quote(entity))
@@ -33,7 +36,7 @@ class EntityPage:
 
     def retrieve_wiki_page(self, entity):
         # To connect and extract the page content of the Wiki Page of the entity
-        connection = self.get_connection(entity)
+        connection = self.__get_connection(entity)
         if connection:
             source = connection.read()
             soup = bs.BeautifulSoup(source, 'lxml')
@@ -44,9 +47,12 @@ class EntityPage:
             self.soup = soup
 
     def build_page_dict(self):
-
+        '''
+        take an entity, crawl the corresponding page from Wikipedia, and build an dictionary of aspects
+        :return: page_dict: the dictionary of aspects crawled from wikipedia
+        '''
         body = self.soup.find(id='bodyContent')
-        h2_list = self.get_h2_list()
+        h2_list = self.__get_h2_list()
 
         # extract the lead paragraphs before the first heading
         start = body.find(class_='mw-parser-output')
@@ -80,7 +86,7 @@ class EntityPage:
             self.page_dict[h2.text.strip().lower()] = {'content': contents, 'links': links, 'heads': heads}
 
 
-    def get_h2_list(self):
+    def __get_h2_list(self):
         # http://trec-car.cs.unh.edu/process/dataselection.html
         # extract all h2 headings of a Wiki page and remove frequent headings like 'see also' etc.
         h_remove = ["see also", "contents",
@@ -104,41 +110,13 @@ class EntityPage:
                 h2_set.append(h2)
         return h2_set
 
-    #useless for now
-    def get_text_bw_2h2(self, mark):
-        '''
-        get the content between 2 sections
-        :param: mark: the start section name. typ: str
-        :return: the whole text between 2 sections as a string
-        '''
-        contents = []
-        links = []
-        for elt in mark.parent.next_siblings:
-            if elt.name == "h2":
-                break
-            try:
-                for link in elt.find_all('a', href=self.__not_file):
-                    links.append(urllib.parse.unquote((link.get('href'))))
-                contents.append(elt.text)
-            except Exception as e:
-                logger.exception(e, exc_info=False)
-        links = " ".join(links)
-        contents = " ".join(contents)
-        type(contents)
-        return contents, links
-
     def __not_file(self, href):
         return href and not re.compile("File").search(href) and re.compile("wiki").search(href)
 
-
-if __name__ == '__main__':
+def build_dict_training():
 
     dir = Path(__file__).parent.parent
     input_file = Path.joinpath(dir, 'output/sentences_eal_subj.json')
-    # output_file = Path.joinpath(dir, 'output/entity_dict/')
-    # if not Path(output_file).is_dir():
-    #         Path(output_file).mkdir()
-
     # load the data
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.load(f, encoding='utf-8')
@@ -153,21 +131,33 @@ if __name__ == '__main__':
     # begin crawling
     wiki_dict = dict()
     logger.info('Start to create dictionary for Wiki pages... ')
-    #entities = list(entities)
+
     for entity in entities:
-        instance = EntityPage()
-        instance.retrieve_wiki_page(entity)
+        instance = EntityPage(entity)
         if instance.soup:
             instance.build_page_dict()
         wiki_dict[entity.lower()] = instance.page_dict
     logger.info('Finished the creation for dictionary of Wikipedia pages')
 
-    saver = DataReader()
-    saver.save2json(Path.joinpath(dir, 'output/wiki.json'), wiki_dict)
+    with open(Path.joinpath(dir, 'output/wiki.json'), 'w', encoding='utf-8') as outfile:
+        json.dump(wiki_dict, outfile)
     logger.info('Saved the dictionary of entities to file.')
-    # saver = DataReader()
-    # saver.save2json(Path.joinpath(output_file, entities[i] + '.json'), instance.page_dict)
-    # pp.pprint(entity_sect_text_dict['Cello Suites (Bach)'])
 
+if __name__ == '__main__':
+
+    ####################
+    # PART 1: for training -- build large dictionary for training data
+    ####################
+    build_dict_training()
+
+    ####################
+    # PART 2: for service -- testing
+    ####################
+    while True:
+        term = input('enter entity: ')
+        EP = EntityPage(term)
+        if EP.soup:
+            EP.build_page_dict()
+        pprint(EP.page_dict)
 
 
