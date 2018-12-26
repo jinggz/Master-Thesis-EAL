@@ -5,7 +5,9 @@ from urllib.parse import quote
 import logging
 import json
 import re
+import html
 from pprint import pprint
+import unicodedata
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -24,6 +26,11 @@ class EntityPage:
         self.page_dict = dict()
         self.soup = None
         self.retrieve_wiki_page(entity)
+
+    def __remove_special(self, s):
+        s = html.unescape(s)
+        s = unicodedata.normalize("NFKD", s)
+        return s
 
     def __get_connection(self, entity):
         try:
@@ -51,20 +58,9 @@ class EntityPage:
         take an entity, crawl the corresponding page from Wikipedia, and build an dictionary of aspects
         :return: page_dict: the dictionary of aspects crawled from wikipedia
         '''
-        body = self.soup.find(id='bodyContent')
-        h2_list = self.__get_h2_list()
-
-        # extract the lead paragraphs before the first heading
-        start = body.find(class_='mw-parser-output')
-        leading = []
-        for chi in start.children:
-            if chi.name == 'p':
-                leading.append(chi.text.strip())
-            if chi.name == 'h2':
-                break
-        leading = " ".join(leading)
-        self.page_dict['lead_paragraphs'] = leading
+        self.__get_lead_pa()
         # extract h2 headings and its content, entities and sub headings
+        h2_list = self.__get_h2_list()
         for h2 in h2_list:
             nextNode = h2.next_sibling
             p = []
@@ -73,23 +69,35 @@ class EntityPage:
             while nextNode and nextNode.name != 'h2':
                 if not isinstance(nextNode, bs.element.NavigableString):
                     if nextNode.name == 'p':
-                        p.append(nextNode.text.strip())
+                        p.append(self.__remove_special(nextNode.text.strip()))
                     for link in nextNode.find_all('a', href=self.__not_file):
                         links.append(urllib.parse.unquote((link.get('href'))))
                     # get sub heads within a h2 head
                     if nextNode.name in ['h3', 'h4', 'h5', 'h6']:
-                        p.append(nextNode.text.strip())
-                        heads.append(nextNode.text.strip().lower())
+                        p.append(self.__remove_special(nextNode.text.strip()))
+                        heads.append(self.__remove_special(nextNode.text.strip().lower()))
                 nextNode = nextNode.next_sibling
             links = " ".join(links)
             contents = " ".join(p)
             self.page_dict[h2.text.strip().lower()] = {'content': contents, 'links': links, 'heads': heads}
 
+    def __get_lead_pa(self):
+        # extract the lead paragraphs before the first heading
+        body = self.soup.find(id='bodyContent')
+        start = body.find(class_='mw-parser-output')
+        leading = []
+        for chi in start.children:
+            if chi.name == 'p':
+                leading.append(self.__remove_special(chi.text.strip()))
+            if chi.name == 'h2':
+                break
+        leading = " ".join(leading)
+        self.page_dict['lead_paragraphs'] = {'content': leading}
 
     def __get_h2_list(self):
         # http://trec-car.cs.unh.edu/process/dataselection.html
         # extract all h2 headings of a Wiki page and remove frequent headings like 'see also' etc.
-        h_remove = ["see also", "contents",
+        h_remove = ["see also", "contents", "notes and references",
                     "references",
                     "external links",
                     "notes",
@@ -148,7 +156,7 @@ if __name__ == '__main__':
     ####################
     # PART 1: for training -- build large dictionary for training data
     ####################
-    build_dict_training()
+    #build_dict_training()
 
     ####################
     # PART 2: for service -- testing
