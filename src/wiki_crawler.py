@@ -124,7 +124,7 @@ class EntityPage:
 def build_dict_training():
 
     dir = Path(__file__).parent.parent
-    input_file = Path.joinpath(dir, 'output/sentences_eal_subj.json')
+    input_file = Path.joinpath(dir, 'trained', 'sentences_subj.json')
     # load the data
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.load(f, encoding='utf-8')
@@ -147,9 +147,9 @@ def build_dict_training():
         wiki_dict[entity.lower()] = instance.page_dict
     logger.info('Finished the creation for dictionary of Wikipedia pages')
 
-    with open(Path.joinpath(dir, 'output/wiki.json'), 'w', encoding='utf-8') as outfile:
+    with open(Path.joinpath(dir, 'trained', 'wiki_subj.json'), 'w', encoding='utf-8') as outfile:
         json.dump(wiki_dict, outfile)
-    logger.info('Saved the dictionary of entities to file.')
+    logger.info('Saved the dictionary of entities to %s' % outfile)
 
 if __name__ == '__main__':
 
