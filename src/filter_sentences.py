@@ -13,7 +13,7 @@ import logging
 from pathlib import Path
 import pandas as pd
 import ahocorasick
-import set_env
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -43,6 +43,8 @@ def filter_samples(wiki_dict, df):
     df = df[using_ahocorasick(df.entity, lst) == False] # filter out entity contain substr in lst
     df.index = range(len(df.index))
 
+    # TODO future: refactor the for loop to df[df.apply(row_iter, axis=1)!=0]
+    # issue: line 55 cant be used in df.apply
     for row in df.itertuples():
         aspects_dict = wiki_dict.get(row.entity)
         if aspects_dict is None:
@@ -55,9 +57,8 @@ def filter_samples(wiki_dict, df):
             else:
                 df.drop(row.Index, inplace=True)
 
-        df.index = range(len(df.index))
+    df.index = range(len(df.index))
 
-    logger.info('The total number of used samples: %s' % len(df))
     return df
 
 def using_ahocorasick(col, lst):
