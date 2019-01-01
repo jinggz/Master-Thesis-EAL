@@ -1,6 +1,6 @@
+import os
 import re
 from pathlib import Path
-import pprint as pp
 import json
 import pickle
 import logging
@@ -70,27 +70,28 @@ class DataReader:
         return Path(__file__).parent.parent
 
 if __name__ == '__main__':
+    os.environ['customer'] = 'subj'
+    if os.getenv('customer') in ['subj', 'obj', 'both']:
+        logger.info('source data  set to ' + os.environ['customer'])
+    else:
+        raise NameError("""Please set an environment variable to indicate which source to use.\n
+        Your options are: customer='subj' or 'obj' or 'both'.\n""")
 
     dir = Path(__file__).parent.parent
 
-    input_file = Path.joinpath(dir, "data/subjlink.txt")
-    output_folder = Path.joinpath(dir, 'output')
+    input_file = Path.joinpath(dir, "data", os.environ['customer']+"link.txt")
+    output_folder = Path.joinpath(dir, 'trained')
 
     if not Path(output_folder).is_dir():
         Path(output_folder).mkdir()
 
     reader = DataReader()
     result = reader.read_raw_data(input_file)
-    reader.save2json(Path.joinpath(dir, 'output/sentences_eal_subj.json'), result)
+    reader.save2json(Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json'), result)
     logger.info('Saved the data.')
-    #reader.save2pickle(output_file_1)
 
     # load
-    with open(Path.joinpath(dir, 'output/sentences_eal_subj.json'), 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    print(data[0])
-
-    # load
-    # with open(Path.joinpath(dir, output_file_1), 'rb') as handle:
-    #     data = pickle.load(handle)
+    # with open(Path.joinpath(dir, 'trained', 'sentences_subj.json'), 'r', encoding='utf-8') as f:
+    #     data = json.load(f)
+    # print(data[0])
 
