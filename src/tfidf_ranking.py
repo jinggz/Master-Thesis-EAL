@@ -2,13 +2,15 @@ import pandas as pd
 import json
 import os
 from pathlib import Path
-#from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
 import logging
 import filter_sentences
+
+import nlp_preprocessing
 import set_env
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -52,11 +54,16 @@ class TfidfRanking:
         return p
 
     def get_aspects_dict(self, entity):
-        #s = entity.replace(' ', '_').lower()
-        return self.wiki_dict.get(entity)
+        s = entity.replace('_', ' ').lower()
+        return self.wiki_dict.get(s)
 
     def get_tfidf(self, text):
-        #TODO more nlp preprocess
+        '''
+        :param text:
+        :type: list of str
+        :return: sparse matrix
+        '''
+        nlp_preprocessing.nlp_pipeline(text)
         return self.model.transform(text)
 
     def get_aspects_vect(self, entity):
@@ -84,11 +91,8 @@ class TfidfRanking:
         '''
 
         # sentence vector
-        # TODO: nlp preprocess for sentence string
         x_feature = self.get_tfidf([sentence])
-        # get aspect dict
-        # TODO: replace space with _ in entity from the wikicrawler to stored dict
-        # aspects vector
+        # get aspect dict and aspects vector
         y_aspects, y_feature = self.get_aspects_vect(entity)
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
