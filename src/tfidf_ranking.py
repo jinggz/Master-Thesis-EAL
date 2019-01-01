@@ -38,11 +38,62 @@ class TfidfRanking:
         self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
         logger.info('The total number of trained sentences is %s' % len(self.sentences))
 
+    def training(self):
+        p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
+        logger.info('calculating the average precision @1')
+        avg_precision(p_list)
+
+    def row_iter(self, row):
+        aspect_pred = self.get_prediction(row['sentence'], row['entity'])
+        if aspect_pred == row['aspect']:
+            p = 1
+        else:
+            p = 0
+        return p
+
     def get_aspects_dict(self, entity):
+        #s = entity.replace(' ', '_').lower()
         return self.wiki_dict.get(entity)
 
+    def get_tfidf(self, text):
+        #TODO more nlp preprocess
+        return self.model.transform(text)
 
-def avg_precision(p, rel_tol=1e-09):
+    def get_aspects_vect(self, entity):
+        y_aspects = list(self.get_aspects_dict(entity).keys())
+        y_content = []
+        for v in self.get_aspects_dict(entity).values():
+            y_content.append(v['content'])
+        y_feature = self.get_tfidf(y_content)
+        return y_aspects, y_feature
+
+    def cos_sim(self, a, b):
+        return cosine_similarity(a, b).flatten()
+
+    def get_prediction(self, sentence, entity):
+        '''
+        return the closest aspect of a given entity appeared in a given sentence
+        :param sentence: a given sentence containing a representation of an entity
+        :type: str
+        :param entity: a given entity identified in the sentence
+        :type: str
+        :return: the closet aspect found in the Wikipedia page of the given entity
+        :type: str
+        '''
+
+        # sentence vector
+        # TODO: nlp preprocess for sentence string
+        x_feature = self.get_tfidf([sentence])
+        # get aspect dict
+        # TODO: replace space with _ in entity from the wikicrawler to stored dict
+        # aspects vector
+        y_aspects, y_feature = self.get_aspects_vect(entity)
+        cos_ranking = self.cos_sim(x_feature, y_feature)
+        y_pred = y_aspects[np.argmax(cos_ranking)]
+        return y_pred
+
+
+def avg_precision(p_list, rel_tol=1e-03):
     '''
     return the moving average p@1, stop when the different of last two p@1 smaller than rel_tol
     :param: p: the list of p@1
@@ -51,72 +102,19 @@ def avg_precision(p, rel_tol=1e-09):
     :return: average p@1
     :return: indicator of convergence
     '''
-    converged = False
-    p_current = sum(p)/len(p)
-    if len(p)==1:
-        p_last=p_current
-    else:
-        p_last = sum(p[:-1])/(len(p)-1)
-    if len(p)>100 and abs(p_last/p_current-1)<=rel_tol: # at least 100 times training
-        converged=True
-    return converged, p_current
-
-def get_tfidf(text, vectorizer):
-    return vectorizer.transform(text)
-
-def cos_sim(a, b):
-    return cosine_similarity(a, b).flatten()
-
-def get_max(aspect_list, score_list):
-    '''
-    :param aspect_list:
-    :param score_list:
-    :return: the aspect with highest cosine similarity
-    '''
-    return aspect_list[np.argmax(score_list)]
-
-def get_entity_tfidf(entity,tfidf_model, wiki_dict):
-    aspect_list = []
-    content_v = []
-    for k in wiki_dict[entity]:
-        if k != 'lead_paragraphs':
-            aspect_list.append(k)
-            content_v.append(get_tfidf(wiki_dict[entity][k]['content'], tfidf_model))
-    return aspect_list, content_v
-
-def get_prediction(sentence, entity): #  most outside func, should return predictions
-    # ranking algo should inside it.
-    tfidf_file = os.environ['tfidf_file']
-    vectorizer = TfIdf(tfidf_file)
-
-    a= get_tfidf(sentence,vectorizer)
-    aspects, b=get_entity_tfidf(entity,vectorizer,wiki_dict)
-    cs_sim_scores = cos_sim(a,b)
-    # make  seperates func for precision
-
-    return get_max(aspects, cs_sim_scores)
-
-
-def tfidf_ranking(x_train): # only for calculating precision for own needs, no need for external use
-    # get clean x_train trough nlp process
-    # suppose sentence is an arrary like [text, entity, aspect]
-    p = []
-    for idx, sentence in enumerate(x_train):
-        aspect_pred = get_prediction(sentence[0], sentence[1]) # todo
-
-        if sentence[2] == aspect_pred:
-            p.append(1)
-        else:
-            p.append(0)
-        isconverged, p_current = avg_precision(p)
-        if isconverged is True:
-            p_final = p_current
-            logger.info('Trained {0:d} sentences.'.format(idx + 1))
+    for i in range(100,len(p_list)):
+        ap_next = sum(p_list[:i+1]) / (i+1)
+        ap_current = sum(p_list[:i])/i
+        ap_last = sum(p_list[:i-1]) / (i-1)
+        if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
+            map = ap_current
+            logger.info('The AP at 1 converged at %s th samples' % i)
+            logger.info('The AP at 1 is %s.' % map)
             break
     else:
-        _, p_final = avg_precision(p)
-        logger.info('Trained all sentences.')
-    return p_final
+        ap_end = sum(p_list) / len(p_list)
+        logger.info('The AP does not converge.')
+        logger.info('The AP at 1 is %s.' % ap_end)
 
 
 
@@ -128,4 +126,7 @@ if __name__ == '__main__':
 
     AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
     AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
+    logger.info('start training...')
+    AR.training()
+    logger.info('end training.')
 
