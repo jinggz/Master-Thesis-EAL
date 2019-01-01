@@ -37,7 +37,7 @@ def filter_samples(wiki_dict, df):
     df.drop(df[(df.entity == 'None') | (df.aspect == 'None')].index, inplace=True)
     df.index = range(len(df.index))
     df = df.apply(lambda x: x.str.lower())
-
+    df.entity = df.entity.replace('_', ' ')
     lst = ['none', 'list of', 'lists of', 'disambiguation', 'category', 'categories', 'gaa', 'cup', 'season',
            'champions', 'league']
     df = df[using_ahocorasick(df.entity, lst) == False] # filter out entity contain substr in lst
@@ -67,16 +67,21 @@ def using_ahocorasick(col, lst):
         A.add_word(word.lower())
     A.make_automaton()
     col = col.str.lower()
-    col = col.str.replace('_', ' ')
     mask = col.apply(lambda x: bool(list(A.iter(x))))
     return mask
 
 if __name__ == '__main__':
 
+    os.environ['customer'] = 'subj'
+    if os.getenv('customer') in ['subj', 'obj', 'both']:
+        logger.info('source data  set to ' + os.environ['customer'])
+    else:
+        raise NameError("""Please set an environment variable to indicate which source to use.\n
+        Your options are: customer='subj' or 'obj' or 'both'.\n""")
     dir = Path(__file__).parent.parent
-    wiki_file = Path.joinpath(dir, os.getenv('wiki_file'))
-    sentence_file = Path.joinpath(dir, os.getenv('sentence_file'))
-    out_file = Path.joinpath(dir, 'trained', 'sentences_clean_subj.json')
+    wiki_file = Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json')
+    sentence_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
+    out_file = Path.joinpath(dir, 'trained', 'sentences_clean_'+os.environ['customer']+'.json')
     with open(wiki_file, 'r', encoding='utf-8') as f:
         wiki_dict = json.load(f)
     sentences = pd.read_json(path_or_buf=sentence_file,

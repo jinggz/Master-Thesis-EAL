@@ -1,3 +1,4 @@
+import os
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
 # from nltk.corpus import stopwords
@@ -43,22 +44,28 @@ def retrieve_docs(data_path):
         data = json.load(f)
     for entity in data.values():
         for section in entity:
-            if section != 'lead_paragraphs':
-                doc = entity[section]['content'].lower()
-                docs.append(doc)
+            doc = entity[section]['content'].lower()
+            docs.append(doc)
     return docs
 
 if __name__ == '__main__':
 
+    os.environ['customer'] = 'subj'
+    if os.getenv('customer') in ['subj', 'obj', 'both']:
+        logger.info('source data  set to ' + os.environ['customer'])
+    else:
+        raise NameError("""Please set an environment variable to indicate which source to use.\n
+        Your options are: customer='subj' or 'obj' or 'both'.\n""")
+
     dir = Path(__file__).parent.parent
 
-    docs = retrieve_docs(Path.joinpath(dir, 'trained', 'wiki_subj.json'))
+    docs = retrieve_docs(Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json'))
 
     logger.info('Starting tfidf training for wikipedia corpus')
     tfidf_trainer = Tfidf(logger)
     tfidf_trainer.train(docs)
     # save to file
-    tfidf_trainer.save_tfidf_model(Path.joinpath(dir, 'model', 'tfidf_subj.pkl'))
+    tfidf_trainer.save_tfidf_model(Path.joinpath(dir, 'model', 'tfidf_'+os.environ['customer']+'.pkl'))
     logger.info('Saved tf-idf trained model')
 
 

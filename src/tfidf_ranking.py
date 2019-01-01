@@ -60,10 +60,12 @@ class TfidfRanking:
         return self.model.transform(text)
 
     def get_aspects_vect(self, entity):
-        y_aspects = list(self.get_aspects_dict(entity).keys())
+        y_aspects = []
         y_content = []
-        for v in self.get_aspects_dict(entity).values():
-            y_content.append(v['content'])
+        for k, v in self.get_aspects_dict(entity).items():
+            if k != 'lead_paragraphs':
+                y_aspects.append(k)
+                y_content.append(v['content'])
         y_feature = self.get_tfidf(y_content)
         return y_aspects, y_feature
 
@@ -119,10 +121,16 @@ def avg_precision(p_list, rel_tol=1e-03):
 
 
 if __name__ == '__main__':
+    os.environ['customer'] = 'subj'
+    if os.getenv('customer') in ['subj', 'obj', 'both']:
+        logger.info('source data  set to ' + os.environ['customer'])
+    else:
+        raise NameError("""Please set an environment variable to indicate which source to use.\n
+        Your options are: customer='subj' or 'obj' or 'both'.\n""")
     dir = Path(__file__).parent.parent
-    model_file = Path.joinpath(dir, os.getenv('tfidf_file'))
-    wiki_file = Path.joinpath(dir, os.getenv('wiki_file'))
-    sentence_file = Path.joinpath(dir, os.getenv('sentence_file'))
+    model_file = Path.joinpath(dir, 'model', 'tfidf_'+os.environ['customer']+'.pkl')
+    wiki_file = Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json')
+    sentence_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
 
     AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
     AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean

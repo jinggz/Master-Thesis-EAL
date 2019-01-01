@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import bs4 as bs
 import urllib.request
@@ -33,6 +34,7 @@ class EntityPage:
         return s
 
     def __get_connection(self, entity):
+        entity = entity.replace(' ', '_')
         try:
             # example: https://en.wikipedia.org/wiki/Segal%E2%80%93Bargmann_space
             connection = urllib.request.urlopen('https://en.wikipedia.org/wiki/' + quote(entity))
@@ -124,7 +126,7 @@ class EntityPage:
 def build_dict_training():
 
     dir = Path(__file__).parent.parent
-    input_file = Path.joinpath(dir, 'trained', 'sentences_subj.json')
+    input_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
     # load the data
     with open(input_file, 'r', encoding='utf-8') as f:
         data = json.load(f, encoding='utf-8')
@@ -144,28 +146,34 @@ def build_dict_training():
         instance = EntityPage(entity)
         if instance.soup:
             instance.build_page_dict()
-        wiki_dict[entity.lower()] = instance.page_dict
+        wiki_dict[entity.replace('_', ' ').lower()] = instance.page_dict
     logger.info('Finished the creation for dictionary of Wikipedia pages')
 
-    with open(Path.joinpath(dir, 'trained', 'wiki_subj.json'), 'w', encoding='utf-8') as outfile:
+    with open(Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json'), 'w', encoding='utf-8') as outfile:
         json.dump(wiki_dict, outfile)
     logger.info('Saved the dictionary of entities to %s' % outfile)
 
 if __name__ == '__main__':
 
+    os.environ['customer'] = 'subj'
+    if os.getenv('customer') in ['subj', 'obj', 'both']:
+        logger.info('source data  set to ' + os.environ['customer'])
+    else:
+        raise NameError("""Please set an environment variable to indicate which source to use.\n
+        Your options are: customer='subj' or 'obj' or 'both'.\n""")
     ####################
     # PART 1: for training -- build large dictionary for training data
     ####################
-    #build_dict_training()
+    build_dict_training()
 
     ####################
     # PART 2: for service -- testing
     ####################
-    while True:
-        term = input('enter entity: ')
-        EP = EntityPage(term)
-        if EP.soup:
-            EP.build_page_dict()
-        pprint(EP.page_dict)
+    # while True:
+    #     term = input('enter entity: ')
+    #     EP = EntityPage(term)
+    #     if EP.soup:
+    #         EP.build_page_dict()
+    #     pprint(EP.page_dict)
 
 
