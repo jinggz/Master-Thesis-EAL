@@ -40,7 +40,7 @@ class TfidfRanking:
         self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
         logger.info('The total number of trained sentences is %s' % len(self.sentences))
 
-    def training(self):
+    def predication_pipeline(self):
         p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
         logger.info('calculating the average precision @1')
         avg_precision(p_list)
@@ -139,6 +139,6 @@ if __name__ == '__main__':
     AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
     AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
     logger.info('start training...')
-    AR.training()
+    AR.predication_pipeline()
     logger.info('end training.')
 
