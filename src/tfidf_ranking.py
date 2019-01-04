@@ -9,13 +9,14 @@ import logging
 import filter_sentences
 
 import nlp_preprocessing
-import set_env
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename='tfidf_ranking.log',
+    filemode='w')
 logger.setLevel(logging.INFO)
 
 class TfidfRanking:
@@ -121,7 +122,7 @@ def avg_precision(p_list, rel_tol=1e-03):
         ap_end = sum(p_list) / len(p_list)
         logger.info('The AP does not converge.')
         logger.info('The AP at 1 is %s.' % ap_end)
-
+    logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
 
 
 if __name__ == '__main__':
