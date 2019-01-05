@@ -1,10 +1,11 @@
 import os
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer
-# from nltk.corpus import stopwords
 from pathlib import Path
 import pickle
 import json
+
+import nlp_preprocessing
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -16,18 +17,18 @@ logger.setLevel(logging.INFO)
 class Tfidf:
 
     def __init__(self, logger):
-        self.vectorizer = TfidfVectorizer(norm='l2', use_idf=True, smooth_idf=True,
-                                          sublinear_tf=True, analyzer='word',
-                                          decode_error='ignore')
+        self.vectorizer = TfidfVectorizer(norm='l2', min_df=0, use_idf=True, smooth_idf=True,
+                                          sublinear_tf=True, decode_error='ignore')
         self.logger = logger
 
     def train(self, docs):
         '''
         use training corpus to train a tf-idf model and save
-        :param docs: type: list of string
+        :param docs: type: list of str
         :return:tfidf model after fit,
         :type: TfidfVectorizer object
         '''
+        nlp_preprocessing.nlp_pipeline(docs)
         self.vectorizer.fit(docs)
         logger.info('finished training tfidf model')
 

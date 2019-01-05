@@ -2,18 +2,21 @@ import pandas as pd
 import json
 import os
 from pathlib import Path
-#from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
 import logging
 import filter_sentences
-import set_env
+
+import nlp_preprocessing
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename='tfidf_ranking.log',
+    filemode='w')
 logger.setLevel(logging.INFO)
 
 class TfidfRanking:
@@ -38,7 +41,7 @@ class TfidfRanking:
         self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
         logger.info('The total number of trained sentences is %s' % len(self.sentences))
 
-    def training(self):
+    def predication_pipeline(self):
         p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
         logger.info('calculating the average precision @1')
         avg_precision(p_list)
@@ -52,11 +55,16 @@ class TfidfRanking:
         return p
 
     def get_aspects_dict(self, entity):
-        #s = entity.replace(' ', '_').lower()
-        return self.wiki_dict.get(entity)
+        s = entity.replace('_', ' ').lower()
+        return self.wiki_dict.get(s)
 
     def get_tfidf(self, text):
-        #TODO more nlp preprocess
+        '''
+        :param text:
+        :type: list of str
+        :return: sparse matrix
+        '''
+        nlp_preprocessing.nlp_pipeline(text)
         return self.model.transform(text)
 
     def get_aspects_vect(self, entity):
@@ -84,11 +92,8 @@ class TfidfRanking:
         '''
 
         # sentence vector
-        # TODO: nlp preprocess for sentence string
         x_feature = self.get_tfidf([sentence])
-        # get aspect dict
-        # TODO: replace space with _ in entity from the wikicrawler to stored dict
-        # aspects vector
+        # get aspect dict and aspects vector
         y_aspects, y_feature = self.get_aspects_vect(entity)
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
@@ -117,7 +122,7 @@ def avg_precision(p_list, rel_tol=1e-03):
         ap_end = sum(p_list) / len(p_list)
         logger.info('The AP does not converge.')
         logger.info('The AP at 1 is %s.' % ap_end)
-
+    logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
 
 
 if __name__ == '__main__':
@@ -135,6 +140,6 @@ if __name__ == '__main__':
     AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
     AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
     logger.info('start training...')
-    AR.training()
+    AR.predication_pipeline()
     logger.info('end training.')
 
