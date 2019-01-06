@@ -9,6 +9,7 @@ import re
 import html
 from pprint import pprint
 import unicodedata
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -143,7 +144,7 @@ def build_dict_training():
     wiki_dict = dict()
     logger.info('Start to create dictionary for Wiki pages... ')
 
-    for entity in entities:
+    for entity in tqdm(entities):
         instance = EntityPage(entity)
         if instance.soup:
             instance.build_page_dict()
