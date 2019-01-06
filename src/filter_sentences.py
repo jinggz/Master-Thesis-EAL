@@ -7,19 +7,7 @@
     # for aspects found as lower level of headings, replace with h2 headings
     # remove duplicates
 # reference: http://trec-car.cs.unh.edu/process/dataselection.html
-import os
-import json
-import logging
-from pathlib import Path
-import pandas as pd
 import ahocorasick
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
-logger.setLevel(logging.INFO)
 
 def filter_samples(wiki_dict, df):
     '''
@@ -69,27 +57,3 @@ def using_ahocorasick(col, lst):
     col = col.str.lower()
     mask = col.apply(lambda x: bool(list(A.iter(x))))
     return mask
-
-if __name__ == '__main__':
-
-    os.environ['customer'] = 'subj'
-    if os.getenv('customer') in ['subj', 'obj', 'both']:
-        logger.info('source data  set to ' + os.environ['customer'])
-    else:
-        raise NameError("""Please set an environment variable to indicate which source to use.\n
-        Your options are: customer='subj' or 'obj' or 'both'.\n""")
-    dir = Path(__file__).parent.parent
-    wiki_file = Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json')
-    sentence_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
-    out_file = Path.joinpath(dir, 'trained', 'sentences_clean_'+os.environ['customer']+'.json')
-    with open(wiki_file, 'r', encoding='utf-8') as f:
-        wiki_dict = json.load(f)
-    sentences = pd.read_json(path_or_buf=sentence_file,
-                      orient='records')
-    logger.info('Original files loaded')
-
-    clean_sentences = filter_samples(wiki_dict, sentences)
-    # no need to save, can be used as the next input of tfidf_ranking.py
-    # with open(out_file, 'w', encoding='utf-8') as f:
-    #     json.dump(clean_sentences, f)
-    # logger.info('Stored the cleaned sentences file to %s' % out_file)
