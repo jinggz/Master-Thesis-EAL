@@ -12,14 +12,15 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
-logger.setLevel(logging.INFO)
+
 
 class Tfidf:
 
     def __init__(self, logger):
         self.vectorizer = TfidfVectorizer(norm='l2', min_df=0, use_idf=True, smooth_idf=True,
                                           sublinear_tf=True, decode_error='ignore')
-        self.logger = logger
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
 
     def train(self, docs):
         '''
@@ -30,7 +31,7 @@ class Tfidf:
         '''
         nlp_preprocessing.nlp_pipeline(docs)
         self.vectorizer.fit(docs)
-        logger.info('finished training tfidf model')
+        self.logger.info('finished training tfidf model')
 
     def save_tfidf_model(self, model_path):
         # save model
