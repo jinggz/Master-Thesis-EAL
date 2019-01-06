@@ -18,8 +18,8 @@ model_file = Path.joinpath(dir, 'model', 'tfidf_model.pkl')
 while True:
     sentence = input('enter sentence:')
     entity = input('enter entity: ')
-    ranking = EAL(model_file)
-    aspect_predicted = ranking.get_prediction(sentence, entity)
+    eal = EAL(model_file)
+    aspect_predicted = eal.get_prediction(sentence, entity)
     print('Predicted most relevant aspect is: %s' % aspect_predicted)
 
 
