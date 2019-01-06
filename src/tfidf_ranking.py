@@ -6,21 +6,17 @@ from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
 import logging
+
 import filter_sentences
-
 import nlp_preprocessing
+from wiki_crawler import EntityPage
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S',
-    filename='tfidf_ranking.log',
-    filemode='w')
-logger.setLevel(logging.INFO)
+main_logger = logging.getLogger('main')
 
 class TfidfRanking:
     def __init__(self, model_file):
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
         self.load_model(model_file)
 
     def load_model(self, model_file):
@@ -28,22 +24,22 @@ class TfidfRanking:
         with open(model_file, 'rb') as f:
             self.model = pickle.load(f)
 
-        logger.info('started TF-IDF ranking with model file: %s' % model_file)
+        self.logger.info('started TF-IDF ranking with model file: %s' % model_file)
 
     def load_train(self, sentence_file, wiki_file):
         with open(wiki_file, 'r', encoding='utf-8') as f:
             self.wiki_dict = json.load(f)
 
         self.sentences = pd.read_json(sentence_file, orient='records')
-        logger.info('Training files loaded')
+        self.logger.info('Training files loaded')
         # return dataframe of cleaned sentence samples
-        logger.info('Filtering sentence samples')
+        self.logger.info('Filtering sentence samples')
         self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
-        logger.info('The total number of trained sentences is %s' % len(self.sentences))
+        self.logger.info('The total number of trained sentences is %s' % len(self.sentences))
 
     def predication_pipeline(self):
         p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
-        logger.info('calculating the average precision @1')
+        self.logger.info('calculating the average precision @1')
         avg_precision(p_list)
 
     def row_iter(self, row):
@@ -99,6 +95,16 @@ class TfidfRanking:
         y_pred = y_aspects[np.argmax(cos_ranking)]
         return y_pred
 
+class EAL(TfidfRanking):
+    def get_aspects_dict(self, entity):
+        # adapt to external use
+        EP = EntityPage(entity)
+        self.logger.info('Connected to Wikipedia')
+        if EP.soup:
+            EP.build_page_dict()
+        self.logger.info('Built dictionary of entity aspects...')
+        return EP.page_dict
+
 
 def avg_precision(p_list, rel_tol=1e-03):
     '''
@@ -115,31 +121,28 @@ def avg_precision(p_list, rel_tol=1e-03):
         ap_last = sum(p_list[:i-1]) / (i-1)
         if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
             map = ap_current
-            logger.info('The AP at 1 converged at %s th samples' % i)
-            logger.info('The AP at 1 is %s.' % map)
+            main_logger.info('The AP at 1 converged at %s th samples' % i)
+            main_logger.info('The AP at 1 is %s.' % map)
             break
     else:
         ap_end = sum(p_list) / len(p_list)
-        logger.info('The AP does not converge.')
-        logger.info('The AP at 1 is %s.' % ap_end)
-    logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
+        main_logger.info('The AP does not converge.')
+        main_logger.info('The AP at 1 is %s.' % ap_end)
+    main_logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
 
 
 if __name__ == '__main__':
-    os.environ['customer'] = 'subj'
-    if os.getenv('customer') in ['subj', 'obj', 'both']:
-        logger.info('source data  set to ' + os.environ['customer'])
-    else:
-        raise NameError("""Please set an environment variable to indicate which source to use.\n
-        Your options are: customer='subj' or 'obj' or 'both'.\n""")
-    dir = Path(__file__).parent.parent
-    model_file = Path.joinpath(dir, 'model', 'tfidf_'+os.environ['customer']+'.pkl')
-    wiki_file = Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json')
-    sentence_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
 
-    AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
-    AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
-    logger.info('start training...')
-    AR.predication_pipeline()
-    logger.info('end training.')
+    dir = Path(__file__).parent.parent
+    # set 'model_file' to your own path
+    model_file = Path.joinpath(dir, 'model', 'tfidf_model.pkl')
+    while True:
+        sentence = input('enter sentence:')
+        entity = input('enter entity: ')
+        logging.info('start training...')
+        ranking = EAL(model_file)
+        aspect_predicted = ranking.get_prediction(sentence, entity)
+        logging.info('end training.')
+        print('Predicted most relevant aspect is: %s' % aspect_predicted)
+
 
