@@ -137,6 +137,7 @@ def build_dict_training():
     entities.discard('None')
     # 19985 entities, among them 10410 unique entities
     logger.info('Remove empty entity')
+    logger.info('The number of unique entities: %s' % len(entities))
 
     # begin crawling
     wiki_dict = dict()
@@ -148,10 +149,11 @@ def build_dict_training():
             instance.build_page_dict()
         wiki_dict[entity.replace('_', ' ').lower()] = instance.page_dict
     logger.info('Finished the creation for dictionary of Wikipedia pages')
+    logger.info('Total number of crawled entity page: %s' % len(wiki_dict))
 
     with open(Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json'), 'w', encoding='utf-8') as outfile:
         json.dump(wiki_dict, outfile)
-    logger.info('Saved the dictionary of entities to %s' % outfile)
+    logger.info('Saved the dictionary of entities')
 
 if __name__ == '__main__':
 
@@ -161,19 +163,8 @@ if __name__ == '__main__':
     else:
         raise NameError("""Please set an environment variable to indicate which source to use.\n
         Your options are: customer='subj' or 'obj' or 'both'.\n""")
-    ####################
-    # PART 1: for training -- build large dictionary for training data
-    ####################
+
     build_dict_training()
 
-    ####################
-    # PART 2: for service -- testing
-    ####################
-    # while True:
-    #     term = input('enter entity: ')
-    #     EP = EntityPage(term)
-    #     if EP.soup:
-    #         EP.build_page_dict()
-    #     pprint(EP.page_dict)
 
 

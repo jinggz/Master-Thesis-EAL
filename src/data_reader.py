@@ -14,6 +14,9 @@ logger.setLevel(logging.INFO)
 
 class DataReader:
 
+    def __init__(self):
+        self.placeholder = ('')
+
     def read_raw_data(self, file):
         # example line:
         # Sentence: Filming took place at Cinevillage Studios in Toronto , Canada and on locations in Toronto including Eaton Centre to Ontario Place The four movies were first broadcast in 1994 on CTV in Canada and in syndication in the United States as part of Universal Television 's Action Pack .
@@ -31,7 +34,7 @@ class DataReader:
 
         line_splited = line.strip().split("\t")
 
-        # exact sentence
+        # extract sentence
         sentence = line_splited[0].split(":", 1)[1].strip()
         # extract triple
         triple = []
@@ -47,7 +50,7 @@ class DataReader:
             if term.startswith('factuality'):
                 fact = term[term.find('(')+1:term.find(')')]
                 fact = fact.split(',')
-            elif term.startswith('Links'):
+            elif term.startswith(self.placeholder):
                 entity = term[term.find('[') + 1:term.find('#')]
                 aspect = term[term.find('#') + 1:term.find(']')]
         if not entity:
@@ -69,8 +72,22 @@ class DataReader:
     def get_file_dir(self):
         return Path(__file__).parent.parent
 
+class SubjReader(DataReader):
+    def __init__(self):
+        self.placeholder = ('Links')
+
+class ObjReader(DataReader):
+    def __init__(self):
+        self.placeholder = ('ObjLink')
+
+class BothJReader(DataReader):
+    # todo. have to differentiate 2 types of link
+    def __init__(self):
+        self.placeholder = ('Links', 'ObjLink')
+
+
 if __name__ == '__main__':
-    os.environ['customer'] = 'subj'
+    os.environ['customer'] = 'obj'
     if os.getenv('customer') in ['subj', 'obj', 'both']:
         logger.info('source data  set to ' + os.environ['customer'])
     else:
@@ -85,13 +102,14 @@ if __name__ == '__main__':
     if not Path(output_folder).is_dir():
         Path(output_folder).mkdir()
 
-    reader = DataReader()
+    if os.environ['customer'] == 'subj':
+        reader = SubjReader()
+    elif os.environ['customer'] == 'obj':
+        reader = ObjReader()
+    else:
+        reader = BothJReader()
     result = reader.read_raw_data(input_file)
     reader.save2json(Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json'), result)
     logger.info('Saved the data.')
 
-    # load
-    # with open(Path.joinpath(dir, 'trained', 'sentences_subj.json'), 'r', encoding='utf-8') as f:
-    #     data = json.load(f)
-    # print(data[0])
 
