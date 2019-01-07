@@ -7,7 +7,9 @@
     # for aspects found as lower level of headings, replace with h2 headings
     # remove duplicates
 # reference: http://trec-car.cs.unh.edu/process/dataselection.html
+import pandas as pd
 import ahocorasick
+
 
 def filter_samples(wiki_dict, df):
     '''
