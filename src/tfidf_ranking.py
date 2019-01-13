@@ -64,7 +64,7 @@ class TfidfRanking:
         :type: list of str
         :return: sparse matrix
         '''
-        nlp_preprocessing.nlp_pipeline(text)
+        text = nlp_preprocessing.nlp_pipeline(text)
         return self.model.transform(text)
 
     def get_aspects_vect(self, entity):
@@ -94,7 +94,11 @@ class TfidfRanking:
         # sentence vector
         x_feature = self.get_tfidf([sentence])
         # get aspect dict and aspects vector
-        y_aspects, y_feature = self.get_aspects_vect(entity)
+        try:
+            y_aspects, y_feature = self.get_aspects_vect(entity)
+        except ValueError as error:
+            logger.error(error)
+            return "summary"
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
         return y_pred
