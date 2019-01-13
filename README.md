@@ -19,6 +19,9 @@ python main.py
 wiki_crawler.py: get an entity as the input, 
 connect to Wikipedia website and return a built dictionary with section headings as keys and contents as values.
 
+Regarding the headings of h2, I remove content and headings based on the selection criteria on (http://trec-car.cs.unh.edu/process/dataselection.html ). 
+I also collected the paragraphs between the title and the table of the contents, named as 'lead_paragraph'.
+
 tfidf_ranking.py: get an sentence and an entity as the input,
 retrieve the entity dictionary via wiki_crawler.py,
 and then return the closest aspect of the entity for the sentence
