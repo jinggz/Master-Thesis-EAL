@@ -60,7 +60,7 @@ class TfidfRanking:
         :type: list of str
         :return: sparse matrix
         '''
-        nlp_preprocessing.nlp_pipeline(text)
+        text = nlp_preprocessing.nlp_pipeline(text)
         return self.model.transform(text)
 
     def get_aspects_vect(self, entity):
@@ -87,10 +87,16 @@ class TfidfRanking:
         :type: str
         '''
 
+        # get aspect dict and aspects vector
+        try:
+            y_aspects, y_feature = self.get_aspects_vect(entity)
+        except ValueError as error:
+            self.logger.error(error)
+            self.logger.error("The page of the entity contains no proper aspect other than lead section.")
+            return "summary"
         # sentence vector
         x_feature = self.get_tfidf([sentence])
-        # get aspect dict and aspects vector
-        y_aspects, y_feature = self.get_aspects_vect(entity)
+        self.logger.info("calculating the most relevant aspect...")
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
         return y_pred
