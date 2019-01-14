@@ -11,12 +11,10 @@ from pprint import pprint
 import unicodedata
 from tqdm import tqdm
 
-logger = logging.getLogger(__name__)
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S')
-logger.setLevel(logging.INFO)
 
 class EntityPage:
     def __init__(self, entity):
@@ -25,6 +23,8 @@ class EntityPage:
         :param soup: a Beautifulsoup object
         :param entity: a string represented an entity
         '''
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
         self.page_dict = dict()
         self.soup = None
         self.retrieve_wiki_page(entity)
@@ -40,7 +40,7 @@ class EntityPage:
             # example: https://en.wikipedia.org/wiki/Segal%E2%80%93Bargmann_space
             connection = urllib.request.urlopen('https://en.wikipedia.org/wiki/' + quote(entity))
         except Exception as e:
-            logger.exception(e, exc_info=False)
+            self.logger.exception(e, exc_info=False)
             return []
         return connection
 
@@ -125,7 +125,7 @@ class EntityPage:
         return href and not re.compile("File").search(href) and re.compile("wiki").search(href)
 
 def build_dict_training():
-
+    logger = logging.getLogger('build log')
     dir = Path(__file__).parent.parent
     input_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
     # load the data
@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     os.environ['customer'] = 'subj'
     if os.getenv('customer') in ['subj', 'obj', 'both']:
-        logger.info('source data  set to ' + os.environ['customer'])
+        logging.info('source data  set to ' + os.environ['customer'])
     else:
         raise NameError("""Please set an environment variable to indicate which source to use.\n
         Your options are: customer='subj' or 'obj' or 'both'.\n""")
