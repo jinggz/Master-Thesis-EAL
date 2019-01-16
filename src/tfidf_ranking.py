@@ -15,7 +15,8 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='/log/tfidf_ranking.log')
+    filename='log/tfidf_ranking_'+os.environ['customer']+'.log',
+    filemode='w')
 
 class TfidfRanking:
     def __init__(self, model_file):
@@ -100,7 +101,7 @@ class TfidfRanking:
             return "summary"
         # sentence vector
         x_feature = self.get_tfidf([sentence])
-        self.logger.info("calculating the most relevant aspect...")
+        self.logger.debug("calculating the most relevant aspect...")
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
         return y_pred
@@ -115,6 +116,7 @@ def avg_precision(p_list, rel_tol=1e-03):
     :return: average p@1
     :return: indicator of convergence
     '''
+    ap_end = sum(p_list) / len(p_list)
     for i in range(100,len(p_list)):
         ap_next = sum(p_list[:i+1]) / (i+1)
         ap_current = sum(p_list[:i])/i
@@ -122,17 +124,15 @@ def avg_precision(p_list, rel_tol=1e-03):
         if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
             map = ap_current
             main_logger.info('The AP at 1 converged at %s th samples' % i)
-            main_logger.info('The AP at 1 is %s.' % map)
+            main_logger.info('The AP at 1 is %.4f.' % map)
             break
     else:
-        ap_end = sum(p_list) / len(p_list)
         main_logger.info('The AP does not converge.')
-        main_logger.info('The AP at 1 is %s.' % ap_end)
-    main_logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
+        main_logger.info('The AP at 1 is %.4f.' % ap_end)
+    main_logger.info('The final AP at 1 is %.4f.' % ap_end)
 
 
 if __name__ == '__main__':
-    os.environ['customer'] = 'subj'
     if os.getenv('customer') in ['subj', 'obj', 'both']:
         main_logger.info('source data  set to ' + os.environ['customer'])
     else:
