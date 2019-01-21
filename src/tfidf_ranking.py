@@ -1,13 +1,9 @@
-import pandas as pd
-import json
-import os
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
 import logging
 
-import filter_sentences
 import nlp_preprocessing
 from wiki_crawler import EntityPage
 
@@ -26,33 +22,8 @@ class TfidfRanking:
 
         self.logger.info('started TF-IDF ranking with model file: %s' % model_file)
 
-    def load_train(self, sentence_file, wiki_file):
-        with open(wiki_file, 'r', encoding='utf-8') as f:
-            self.wiki_dict = json.load(f)
-
-        self.sentences = pd.read_json(sentence_file, orient='records')
-        self.logger.info('Training files loaded')
-        # return dataframe of cleaned sentence samples
-        self.logger.info('Filtering sentence samples')
-        self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
-        self.logger.info('The total number of trained sentences is %s' % len(self.sentences))
-
-    def predication_pipeline(self):
-        p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
-        self.logger.info('calculating the average precision @1')
-        avg_precision(p_list)
-
-    def row_iter(self, row):
-        aspect_pred = self.get_prediction(row['sentence'], row['entity'])
-        if aspect_pred == row['aspect']:
-            p = 1
-        else:
-            p = 0
-        return p
-
     def get_aspects_dict(self, entity):
-        s = entity.replace('_', ' ').lower()
-        return self.wiki_dict.get(s)
+        return None
 
     def get_tfidf(self, text):
         '''
@@ -113,38 +84,13 @@ class TfidfRanking:
 class EAL(TfidfRanking):
     def get_aspects_dict(self, entity):
         # adapt to external use
+        entity = entity.strip()
         EP = EntityPage(entity)
         self.logger.info('Connected to Wikipedia')
         if EP.soup:
             EP.build_page_dict()
         self.logger.info('Built dictionary of entity aspects...')
         return EP.page_dict
-
-
-def avg_precision(p_list, rel_tol=1e-03):
-    '''
-    return the moving average p@1, stop when the different of last two p@1 smaller than rel_tol
-    :param: p: the list of p@1
-    :param rel_tol: the relelvant tolerance between 2 precisions,(0,1)
-    :type: double
-    :return: average p@1
-    :return: indicator of convergence
-    '''
-    for i in range(100,len(p_list)):
-        ap_next = sum(p_list[:i+1]) / (i+1)
-        ap_current = sum(p_list[:i])/i
-        ap_last = sum(p_list[:i-1]) / (i-1)
-        if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
-            map = ap_current
-            main_logger.info('The AP at 1 converged at %s th samples' % i)
-            main_logger.info('The AP at 1 is %s.' % map)
-            break
-    else:
-        ap_end = sum(p_list) / len(p_list)
-        main_logger.info('The AP does not converge.')
-        main_logger.info('The AP at 1 is %s.' % ap_end)
-    main_logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
-
 
 if __name__ == '__main__':
 
