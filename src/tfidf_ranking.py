@@ -67,9 +67,8 @@ class TfidfRanking:
         y_aspects = []
         y_content = []
         for k, v in self.get_aspects_dict(entity).items():
-            if k != 'lead_paragraphs':
-                y_aspects.append(k)
-                y_content.append(v['content'])
+            y_aspects.append(k)
+            y_content.append(v['content'])
         y_feature = self.get_tfidf(y_content)
         return y_aspects, y_feature
 
@@ -92,14 +91,24 @@ class TfidfRanking:
             y_aspects, y_feature = self.get_aspects_vect(entity)
         except ValueError as error:
             self.logger.error(error)
-            self.logger.error("The page of the entity contains no proper aspect other than lead section.")
-            return "summary"
+            self.logger.error("The page of the entity contains no proper aspect.")
+            return "", 0
         # sentence vector
         x_feature = self.get_tfidf([sentence])
         self.logger.info("calculating the most relevant aspect...")
         cos_ranking = self.cos_sim(x_feature, y_feature)
-        y_pred = y_aspects[np.argmax(cos_ranking)]
-        return y_pred
+        if len(cos_ranking) == 1: # only contain 1 aspect (summary)
+            y_pred = "summary"
+            cos_sim = cos_ranking[0]
+        else:
+            ind = np.argpartition(cos_ranking, -2)[-2:]  # get indexes of 2 biggest values
+            if ind[1] != 0: # if largest score is not 'summary'
+                y_pred = y_aspects[ind[1]]
+                cos_sim = cos_ranking[ind[1]]
+            else:
+                y_pred = y_aspects[ind[0]]
+                cos_sim = cos_ranking[ind[0]]
+        return y_pred, cos_sim
 
 class EAL(TfidfRanking):
     def get_aspects_dict(self, entity):
@@ -147,8 +156,8 @@ if __name__ == '__main__':
         entity = input('enter entity: ')
         logging.info('start training...')
         ranking = EAL(model_file)
-        aspect_predicted = ranking.get_prediction(sentence, entity)
+        aspect_predicted, score = ranking.get_prediction(sentence, entity)
         logging.info('end training.')
-        print('Predicted most relevant aspect is: %s' % aspect_predicted)
+        print('Predicted most relevant aspect is: %s(score: %.4f)' % (aspect_predicted,score))
 
 
