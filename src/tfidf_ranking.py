@@ -1,13 +1,9 @@
-import pandas as pd
-import json
-import os
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import numpy as np
 import logging
 
-import filter_sentences
 import nlp_preprocessing
 from wiki_crawler import EntityPage
 
@@ -26,33 +22,8 @@ class TfidfRanking:
 
         self.logger.info('started TF-IDF ranking with model file: %s' % model_file)
 
-    def load_train(self, sentence_file, wiki_file):
-        with open(wiki_file, 'r', encoding='utf-8') as f:
-            self.wiki_dict = json.load(f)
-
-        self.sentences = pd.read_json(sentence_file, orient='records')
-        self.logger.info('Training files loaded')
-        # return dataframe of cleaned sentence samples
-        self.logger.info('Filtering sentence samples')
-        self.sentences = filter_sentences.filter_samples(self.wiki_dict, self.sentences)
-        self.logger.info('The total number of trained sentences is %s' % len(self.sentences))
-
-    def predication_pipeline(self):
-        p_list = self.sentences.apply(self.row_iter, axis=1).tolist()
-        self.logger.info('calculating the average precision @1')
-        avg_precision(p_list)
-
-    def row_iter(self, row):
-        aspect_pred = self.get_prediction(row['sentence'], row['entity'])
-        if aspect_pred == row['aspect']:
-            p = 1
-        else:
-            p = 0
-        return p
-
     def get_aspects_dict(self, entity):
-        s = entity.replace('_', ' ').lower()
-        return self.wiki_dict.get(s)
+        return None
 
     def get_tfidf(self, text):
         '''
@@ -67,9 +38,8 @@ class TfidfRanking:
         y_aspects = []
         y_content = []
         for k, v in self.get_aspects_dict(entity).items():
-            if k != 'lead_paragraphs':
-                y_aspects.append(k)
-                y_content.append(v['content'])
+            y_aspects.append(k)
+            y_content.append(v['content'])
         y_feature = self.get_tfidf(y_content)
         return y_aspects, y_feature
 
@@ -92,50 +62,35 @@ class TfidfRanking:
             y_aspects, y_feature = self.get_aspects_vect(entity)
         except ValueError as error:
             self.logger.error(error)
-            self.logger.error("The page of the entity contains no proper aspect other than lead section.")
-            return "summary"
+            self.logger.error("The page of the entity contains no proper aspect.")
+            return "", 0
         # sentence vector
         x_feature = self.get_tfidf([sentence])
         self.logger.info("calculating the most relevant aspect...")
         cos_ranking = self.cos_sim(x_feature, y_feature)
-        y_pred = y_aspects[np.argmax(cos_ranking)]
-        return y_pred
+        if len(cos_ranking) == 1: # only contain 1 aspect (summary)
+            y_pred = "summary"
+            cos_sim = cos_ranking[0]
+        else:
+            ind = np.argpartition(cos_ranking, -2)[-2:]  # get indexes of 2 biggest values
+            if ind[1] != 0: # if largest score is not 'summary'
+                y_pred = y_aspects[ind[1]]
+                cos_sim = cos_ranking[ind[1]]
+            else:
+                y_pred = y_aspects[ind[0]]
+                cos_sim = cos_ranking[ind[0]]
+        return y_pred, cos_sim
 
 class EAL(TfidfRanking):
     def get_aspects_dict(self, entity):
         # adapt to external use
+        entity = entity.strip()
         EP = EntityPage(entity)
         self.logger.info('Connected to Wikipedia')
         if EP.soup:
             EP.build_page_dict()
         self.logger.info('Built dictionary of entity aspects...')
         return EP.page_dict
-
-
-def avg_precision(p_list, rel_tol=1e-03):
-    '''
-    return the moving average p@1, stop when the different of last two p@1 smaller than rel_tol
-    :param: p: the list of p@1
-    :param rel_tol: the relelvant tolerance between 2 precisions,(0,1)
-    :type: double
-    :return: average p@1
-    :return: indicator of convergence
-    '''
-    for i in range(100,len(p_list)):
-        ap_next = sum(p_list[:i+1]) / (i+1)
-        ap_current = sum(p_list[:i])/i
-        ap_last = sum(p_list[:i-1]) / (i-1)
-        if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
-            map = ap_current
-            main_logger.info('The AP at 1 converged at %s th samples' % i)
-            main_logger.info('The AP at 1 is %s.' % map)
-            break
-    else:
-        ap_end = sum(p_list) / len(p_list)
-        main_logger.info('The AP does not converge.')
-        main_logger.info('The AP at 1 is %s.' % ap_end)
-    main_logger.info('The final AP at 1 is %s.' % sum(p_list) / len(p_list))
-
 
 if __name__ == '__main__':
 
@@ -147,8 +102,8 @@ if __name__ == '__main__':
         entity = input('enter entity: ')
         logging.info('start training...')
         ranking = EAL(model_file)
-        aspect_predicted = ranking.get_prediction(sentence, entity)
+        aspect_predicted, score = ranking.get_prediction(sentence, entity)
         logging.info('end training.')
-        print('Predicted most relevant aspect is: %s' % aspect_predicted)
+        print('Predicted most relevant aspect is: %s(score: %.4f)' % (aspect_predicted,score))
 
 
