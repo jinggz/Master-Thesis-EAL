@@ -10,7 +10,7 @@ import logging
 import filter_sentences
 import nlp_preprocessing
 
-main_logger = logging.getLogger('main')
+logger = logging.getLogger('main')
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
@@ -123,18 +123,18 @@ def avg_precision(p_list, rel_tol=1e-03):
         ap_last = sum(p_list[:i-1]) / (i-1)
         if abs(ap_last/ap_current-1)<=rel_tol and abs(ap_next/ap_current-1)<=rel_tol:
             map = ap_current
-            main_logger.info('The AP at 1 converged at %s th samples' % i)
-            main_logger.info('The AP at 1 is %.4f.' % map)
+            logger.info('The AP at 1 converged at %s th samples' % i)
+            logger.info('The AP at 1 is %.4f.' % map)
             break
     else:
-        main_logger.info('The AP does not converge.')
-        main_logger.info('The AP at 1 is %.4f.' % ap_end)
-    main_logger.info('The final AP at 1 is %.4f.' % ap_end)
+        logger.info('The AP does not converge.')
+        logger.info('The AP at 1 is %.4f.' % ap_end)
+    logger.info('The final AP at 1 is %.4f.' % ap_end)
 
 
 if __name__ == '__main__':
     if os.getenv('customer') in ['subj', 'obj', 'both']:
-        main_logger.info('source data  set to ' + os.environ['customer'])
+        logger.info('source data  set to ' + os.environ['customer'])
     else:
         raise NameError("""Please set an environment variable to indicate which source to use.\n
         Your options are: customer='subj' or 'obj' or 'both'.\n""")
@@ -145,7 +145,7 @@ if __name__ == '__main__':
 
     AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
     AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
-    main_logger.info('start training...')
+    logger.info('start training...')
     AR.predication_pipeline()
-    main_logger.info('end training.')
+    logger.info('end training.')
 
