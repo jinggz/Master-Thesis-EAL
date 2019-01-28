@@ -3,33 +3,37 @@ import json
 import os
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
-import pickle
 import numpy as np
 import logging
+from gensim.test.utils import get_tmpfile
+from gensim.models import KeyedVectors
+from gensim.scripts.glove2word2vec import glove2word2vec
 
 import filter_sentences
 import nlp_preprocessing
 
 logger = logging.getLogger('main')
 logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='log/tfidf_ranking_'+os.environ['customer']+'.log',
-    filemode='w')
+    filename='log/wemb_ranking_' + os.environ['customer'] + '.log',
+    filemode='w'
+)
 
-class TfidfRanking:
+class WembRanking:
     def __init__(self, model_file):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
         self.load_model(model_file)
 
     def load_model(self, model_file):
-        #load tfidf model
-        with open(model_file, 'rb') as f:
-            self.model = pickle.load(f)
+        #load glove300d pretrained vector
+        tmp_file = get_tmpfile("temp_word2vec.txt")
+        glove2word2vec(model_file, tmp_file)
+        self.model = KeyedVectors.load_word2vec_format(tmp_file, binary=False)
 
-        self.logger.info('started TF-IDF ranking with model file: %s' % model_file)
+        self.logger.info('Glove pretrained vector model loaded')
 
     def load_train(self, sentence_file, wiki_file):
         with open(wiki_file, 'r', encoding='utf-8') as f:
@@ -59,14 +63,39 @@ class TfidfRanking:
         s = entity.replace('_', ' ').lower()
         return self.wiki_dict.get(s)
 
-    def get_tfidf(self, text):
+    def get_textembedding(self, text_list):
         '''
         :param text:
         :type: list of str
         :return: sparse matrix
         '''
-        text = nlp_preprocessing.nlp_pipeline(text)
-        return self.model.transform(text)
+        text_list = nlp_preprocessing.nlp_pipeline(text_list)
+        res = []
+        for text in text_list:
+            res.append(self.sentemb(text))
+        return res
+
+    def sentemb(self, sentence):
+        '''
+        return aggregate average embedding vector for a sentence
+        :param sentence: a long string
+        :type:str
+        :return:
+        '''
+        words = sentence.split()
+        article_embedd = []
+        for word in words:
+            try:
+                embed_word = self.model[word]
+                article_embedd.append(embed_word)
+            except KeyError:
+                continue
+        if article_embedd == []:
+            return np.zeros(300)
+        else:
+            article_embedd = np.asarray(article_embedd)
+            avg = np.average(article_embedd, axis=0)
+        return avg
 
     def get_aspects_vect(self, entity):
         y_aspects = []
@@ -75,7 +104,7 @@ class TfidfRanking:
             if k != 'lead_paragraphs':
                 y_aspects.append(k)
                 y_content.append(v['content'])
-        y_feature = self.get_tfidf(y_content)
+        y_feature = self.get_textembedding(y_content)
         return y_aspects, y_feature
 
     def cos_sim(self, a, b):
@@ -100,7 +129,7 @@ class TfidfRanking:
             self.logger.error("The page of the entity contains no proper aspect other than lead section.")
             return "summary"
         # sentence vector
-        x_feature = self.get_tfidf([sentence])
+        x_feature = self.get_textembedding([sentence])
         self.logger.debug("calculating the most relevant aspect...")
         cos_ranking = self.cos_sim(x_feature, y_feature)
         y_pred = y_aspects[np.argmax(cos_ranking)]
@@ -139,12 +168,12 @@ if __name__ == '__main__':
         raise NameError("""Please set an environment variable to indicate which source to use.\n
         Your options are: customer='subj' or 'obj' or 'both'.\n""")
     dir = Path(__file__).parent.parent
-    model_file = Path.joinpath(dir, 'model', 'tfidf_'+os.environ['customer']+'.pkl')
+    model_file = Path.joinpath(dir, 'model', 'glove.6B.300d.txt')
     wiki_file = Path.joinpath(dir, 'trained', 'wiki_'+os.environ['customer']+'.json')
     sentence_file = Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json')
 
-    AR = TfidfRanking(model_file) # 'model_file' should be set as an env in docker
-    AR.load_train(sentence_file, wiki_file)    # this function for my own training #sentence will be clean
+    AR = WembRanking(model_file) # 'model_file' should be set as an env in docker
+    AR.load_train(sentence_file, wiki_file)
     logger.info('start training...')
     AR.predication_pipeline()
     logger.info('end training.')
