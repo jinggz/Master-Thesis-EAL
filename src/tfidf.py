@@ -52,11 +52,11 @@ def retrieve_docs(data_path):
 if __name__ == '__main__':
 
     os.environ['customer'] = 'subj'
-    if os.getenv('customer') in ['subj', 'obj', 'both']:
+    if os.getenv('customer') in ['subj', 'obj', 'both_subj', 'both_obj']:
         logger.info('source data  set to ' + os.environ['customer'])
     else:
         raise NameError("""Please set an environment variable to indicate which source to use.\n
-        Your options are: customer='subj' or 'obj' or 'both'.\n""")
+        Your options are: customer='subj' or 'obj' or 'both_subj' or ' both_obj'.\n""")
 
     dir = Path(__file__).parent.parent
 
