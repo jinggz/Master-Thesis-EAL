@@ -25,6 +25,7 @@ def create_train(contexts, locale):
     trainset_1=[]
     trainset_2=[]
 
+    i = 0 # index rows with same sentence
     for k, sent in tqdm(contexts.items()):
         A = sent["sent_context"]
         for asp in sent["aspect_candidates"]:
@@ -33,9 +34,10 @@ def create_train(contexts, locale):
             if B_1 == sent["true"]:
                 label = 1
             else:
-                label=0
-            trainset_1.append([A, B_1, label])
-            trainset_2.append([A, B_2, label])
+                label = 0
+            trainset_1.append([A, B_1, label, i])
+            trainset_2.append([A, B_2, label, i])
+        i += 1
     return trainset_1, trainset_2
 
 if __name__ == '__main__':
@@ -57,10 +59,12 @@ if __name__ == '__main__':
 
     with open(Path.joinpath(dir, 'trained', 'labeled_title_'+os.environ['customer']+'.tsv'), 'w', encoding='utf-8') as outfile:
         tsv_writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
+        tsv_writer.writerow(["sentence", "aspect", "label", "idx_sentence"])
         for i in dt1:
             tsv_writer.writerow(i)
     with open(Path.joinpath(dir, 'trained', 'labeled_content_'+os.environ['customer']+'.tsv'), 'w', encoding='utf-8') as outfile:
         tsv_writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
+        tsv_writer.writerow(["sentence", "aspect", "label", "idx_sentence"])
         for i in dt2:
             tsv_writer.writerow(i)
     logger.info('Labeled datasets created.')
