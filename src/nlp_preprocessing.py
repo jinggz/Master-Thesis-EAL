@@ -30,4 +30,14 @@ def nlp_pipeline(text_list):
         string_list.append(wordstring)
     return string_list
 
+def whitespace_tokenize(text_list):
+    string_list = []
+    for text in text_list:
+        text = text.split()
+        string_list.append(text)
+    return string_list
 
+if __name__ == '__main__':
+    data=["The son of James H. Ganong and Susan E. Brittain , he is the brother of Susie , Kit -LRB- Whidden -RRB- , Arthur , and William .	"]
+    result = whitespace_tokenize(nlp_pipeline(data))
+    print(result)
