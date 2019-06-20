@@ -83,11 +83,11 @@ class ObjReader(DataReader):
 class BothJReader(DataReader):
     # todo. have to differentiate 2 types of link
     def __init__(self):
-        self.placeholder = ('Links', 'ObjLink')
+        self.placeholder = ('ObjLink')
 
 
 if __name__ == '__main__':
-    os.environ['customer'] = 'obj'
+    os.environ['customer'] = 'both'
     if os.getenv('customer') in ['subj', 'obj', 'both']:
         logger.info('source data  set to ' + os.environ['customer'])
     else:
