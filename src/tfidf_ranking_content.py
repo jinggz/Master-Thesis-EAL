@@ -15,7 +15,7 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='log/tfidf_ranking_'+os.environ['customer']+'.log',
+    filename='log/tfidf_ranking_content'+os.environ['customer']+'.log',
     filemode='w')
 
 class TfidfRanking:
