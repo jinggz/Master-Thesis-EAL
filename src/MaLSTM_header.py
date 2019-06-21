@@ -41,24 +41,26 @@ logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='log/lstm_ranking_content_'+os.environ['customer']+'.log',
+    filename='log/lstm_ranking_hd_de'+os.environ['customer']+'_0622.log',
     filemode='w')
 
 dir = Path(__file__).parent.parent
 
-def load_file(train, test):
+def load_file(train, test_1, test_2):
     train_df = pd.read_csv(train, delimiter='\t', encoding='utf-8')
-    test_df = pd.read_csv(test, delimiter='\t', encoding='utf-8')
+    test_df_1 = pd.read_csv(test_1, delimiter='\t', encoding='utf-8')
+    test_df_2 = pd.read_csv(test_2, delimiter='\t', encoding='utf-8')
     #logger.info("File loaded.")
-    return train_df, test_df
+    return train_df, test_df_1, test_df_2
 
 
 # In[39]:
 
-train_file = Path.joinpath(dir, 'trained', 'cleaned_subj.tsv')
-test_file = Path.joinpath(dir, 'trained', 'cleaned_both_subj.tsv')
+train_file = Path.joinpath(dir, 'trained', 'cleaned_'+os.environ['customer']+'.tsv')
+test_file_1 = Path.joinpath(dir, 'trained', 'cleaned_both_subj.tsv')
+test_file_2 = Path.joinpath(dir, 'trained', 'cleaned_both_obj.tsv')
 
-train_df_unsampled, test_df = load_file(train_file, test_file)
+train_df_unsampled, test_df_1, test_df_2 = load_file(train_file, test_file_1, test_file_2)
 
 # In[41]:
 
@@ -89,7 +91,7 @@ word2vec = KeyedVectors.load_word2vec_format(tmp_file, binary=False)
 questions_cols = ['sentence', 'aspect']
 
 # Iterate over the questions only of both training and test datasets
-for dataset in [train_df, test_df]:
+for dataset in [train_df, test_df_1, test_df_2]:
     for index, row in dataset.iterrows():
 
         # Iterate through the text of both questions of the row
@@ -102,8 +104,8 @@ for dataset in [train_df, test_df]:
             # truncate words after 80 tokens to speed up training
             # if len(words) >= 174:
             #     words = words[:174]
-            if len(words) >= 50:  #for header
-                words = words[:50]
+            # if len(words) >= 50:  #for header
+            #     words = words[:50]
 
             for word in words:
 
@@ -142,9 +144,7 @@ del word2vec
 
 # Prepare training and validation data
 max_seq_length = max(train_df.sentence.map(lambda x: len(x)).max(),
-                     train_df.aspect.map(lambda x: len(x)).max(),
-                     test_df.sentence.map(lambda x: len(x)).max(),
-                     test_df.aspect.map(lambda x: len(x)).max())
+                     train_df.aspect.map(lambda x: len(x)).max())
 
 # Split to train validation
 validation_size = 0.1
@@ -158,14 +158,15 @@ Y_train = train_df['label']
 # Split to dicts
 X_train = {'left': X_train.sentence, 'right': X_train.aspect}
 #X_validation = {'left': X_validation.sentence, 'right': X_validation.aspect_content}
-X_test = {'left': test_df.sentence, 'right': test_df.aspect}
+X_test_1 = {'left': test_df_1.sentence, 'right': test_df_1.aspect}
+X_test_2 = {'left': test_df_2.sentence, 'right': test_df_2.aspect}
 
 # Convert labels to their numpy representations
 Y_train = Y_train.values
 #Y_validation = Y_validation.values
 
 # Zero padding
-for dataset, side in itertools.product([X_train, X_test], ['left', 'right']):
+for dataset, side in itertools.product([X_train, X_test_1, X_test_2], ['left', 'right']):
     dataset[side] = pad_sequences(dataset[side], maxlen=max_seq_length)
 
 # Make sure everything is ok
@@ -215,7 +216,7 @@ malstm = Model([left_input, right_input], [malstm_distance])
 # Adadelta optimizer, with gradient clipping by norm
 optimizer = Adadelta(clipnorm=gradient_clipping_norm)
 
-malstm.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['accuracy'])
+malstm.compile(loss='mean_squared_error', optimizer="adadelta", metrics=['accuracy']) #["optimizer", "adadelta"]
 #tensorboard = TensorBoard(log_dir=LOG_DIR.format(datetime.time()))
 
 
@@ -227,8 +228,7 @@ malstm.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['accurac
 training_start_time = time.time()
 
 
-es = EarlyStopping(monitor='val_loss', min_delta=0, patience=-2, verbose=0, mode='auto', restore_best_weights=True)
-
+es = EarlyStopping(monitor='val_loss', min_delta=0, patience=3, verbose=0, mode='auto', restore_best_weights=True)
 #mc = ModelCheckpoint('model\\weights.{epoch:02d}-{val_loss:.2f}.hdf5', monitor='val_loss', verbose=0, save_best_only=True, mode='min', period=1)
 
 malstm_trained = malstm.fit([X_train['left'], X_train['right']], Y_train, batch_size=batch_size, epochs=n_epoch,
@@ -237,9 +237,15 @@ malstm_trained = malstm.fit([X_train['left'], X_train['right']], Y_train, batch_
 print("Training time finished.\n{} epochs in {}".format(n_epoch, datetime.timedelta(seconds=time.time()-training_start_time)))
 
 # Predict
-y_true = test_df['label']
-y_true = y_true.values
-y_pred = malstm.predict([X_test['left'], X_test['right']])
+# Predict for test dt 1
+y_true_1 = test_df_1['label']
+y_true_1 = y_true_1.values
+y_pred_1 = malstm.predict([X_test_1['left'], X_test_1['right']])
+
+# Predict for test dt 2
+y_true_2 = test_df_2['label']
+y_true_2 = y_true_2.values
+y_pred_2 = malstm.predict([X_test_2['left'], X_test_2['right']])
 
 # Evaluation using p@1
 def get_precision(test_df):
@@ -281,23 +287,40 @@ def avg_precision(p_list, rel_tol=1e-03):
         logger.info('The AP at 1 is %.4f.' % ap_end)
     logger.info('The final AP at 1 is %.4f, with %d samples' % (ap_end, len(p_list)))
 
-test_df["similarity"] = y_pred
-precision_list = get_precision(test_df)
-logger.info('calculating the average precision @1')
-avg_precision(precision_list)
+test_df_1["similarity"] = y_pred_1
+precision_list_1 = get_precision(test_df_1)
+logger.info('calculating the average precision @1 for test data set 1')
+avg_precision(precision_list_1)
+
+test_df_2["similarity"] = y_pred_2
+precision_list_2 = get_precision(test_df_2)
+logger.info('calculating the average precision @1 for test data set 2')
+avg_precision(precision_list_2)
 
 
 # Evaluation using F1-score
 
-y_pred = y_pred > 0.5
-y_pred = y_pred.flatten().astype(int)
-acc = accuracy_score(y_true, y_pred)
-f_score = f1_score(y_true, y_pred, average='binary', pos_label=1)
+y_pred_1 = y_pred_1 > 0.5
+y_pred_1 = y_pred_1.flatten().astype(int)
+acc = accuracy_score(y_true_1, y_pred_1)
+f_score = f1_score(y_true_1, y_pred_1, average='binary', pos_label=1)
 
-print("The accuracy evaluated on test dataset is %.4f" % acc)
-print('The F1 score evaluated on test dataset is %.4f' % f_score)
-print(classification_report(y_true, y_pred))
+logger.info("The accuracy evaluated on test dataset 1 is %.4f" % acc)
+logger.info('The F1 score evaluated on test dataset  1is %.4f' % f_score)
+logger.info(classification_report(y_true_1, y_pred_1))
+print(classification_report(y_true_1, y_pred_1))
+
+y_pred_2 = y_pred_2 > 0.5
+y_pred_2 = y_pred_2.flatten().astype(int)
+acc = accuracy_score(y_true_2, y_pred_2)
+f_score = f1_score(y_true_2, y_pred_2, average='binary', pos_label=1)
+
+logger.info("The accuracy evaluated on test dataset 2 is %.4f" % acc)
+logger.info('The F1 score evaluated on test dataset 2 is %.4f' % f_score)
+logger.info(classification_report(y_true_2, y_pred_2))
+print(classification_report(y_true_2, y_pred_2))
 
 # Save model
-MODEL_FILE = Path.joinpath(dir, 'model', 'malstm_subj_header_0621.h5')
+MODEL_FILE = Path.joinpath(dir, 'model', 'malstm_hd_de_'+os.environ['customer']+'.h5')
 malstm.save_weights(MODEL_FILE)
+#lstm = load_model('my_model.h5', custom_objects={'malstm_distance': malstm_distance})
