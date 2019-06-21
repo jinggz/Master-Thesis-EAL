@@ -75,8 +75,8 @@ train_df.index = range(len(train_df.index))
 
 
 # Prepare embedding
-EMBEDDING_FILE = 'C:\\Users\\D074031\\Personal\\Master-Thesis-EAL\\model\\glove.6B.300d.txt'
-#EMBEDDING_FILE = Path.joinpath(dir, 'model', 'glove.6B.300d.txt')
+#EMBEDDING_FILE = 'C:\\Users\\D074031\\Personal\\Master-Thesis-EAL\\model\\glove.6B.300d.txt'
+EMBEDDING_FILE = Path.joinpath(dir, 'model', 'glove.6B.300d.txt')
 tmp_file = get_tmpfile("temp_word2vec.txt")
 glove2word2vec(EMBEDDING_FILE, tmp_file)
 vocabulary = dict()
