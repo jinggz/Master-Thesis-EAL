@@ -100,9 +100,9 @@ for dataset in [train_df, test_df_1, test_df_2]:
             
             words = row[question].split() # do whitespace token
 
-            # truncate words after 80 tokens to speed up training
-            if len(words) >= 174:
-                words = words[:174]
+            # truncate words after  tokens to speed up training [50,80, 174, 256] less is better
+            if len(words) >= 50:
+                words = words[:50]
 
             for word in words:
 
@@ -212,7 +212,7 @@ malstm = Model([left_input, right_input], [malstm_distance])
 # Adadelta optimizer, with gradient clipping by norm
 optimizer = Adadelta(clipnorm=gradient_clipping_norm)
 
-malstm.compile(loss='mean_squared_error', optimizer="adadelta", metrics=['accuracy']) #["optimizer", "adadelta"]
+malstm.compile(loss='mean_squared_error', optimizer="adadelta", metrics=['accuracy']) #["optimizer", "adadelta"], default is better
 #tensorboard = TensorBoard(log_dir=LOG_DIR.format(datetime.time()))
 
 

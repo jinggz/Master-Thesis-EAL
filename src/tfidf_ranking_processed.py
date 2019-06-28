@@ -52,7 +52,7 @@ class TfidfRanking:
             vec_aspect = self.get_tfidf(aspect)
             if vec_sentence is not None and vec_aspect is not None:
                 # cos_ranking = self.matrix_cosine(vec_sentences, vec_aspects)
-                cos_ranking.add( self.cos_sim(vec_sentence, vec_aspect).tolist())
+                cos_ranking.extend(self.cos_sim(vec_sentence, vec_aspect).tolist())
 
         self.logger.info('Start transform text to tdidf vector....')
         # vec_sentences = self.get_tfidf(sentences_list)
