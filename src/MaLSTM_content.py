@@ -1,6 +1,7 @@
 
 # coding: utf-8
-
+# this file is to train Malstm model using content
+# input file: cleaned_[customer].tsv (preprocessed) or labeled_[customer].tsv (not preprocessed)
 # In[4]:
 
 import time

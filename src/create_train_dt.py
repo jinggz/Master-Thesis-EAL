@@ -1,3 +1,7 @@
+#this code is to create eal data
+#input: sentence data and wiki data
+#output: context_[customer].json
+
 import os
 import re
 from pathlib import Path

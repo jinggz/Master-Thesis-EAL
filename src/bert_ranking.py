@@ -1,3 +1,6 @@
+# do ranking using bert model and can use either content or header
+# input file: cleaned_[customer].tsv (preprocessed) or labeled_[customer].tsv (not preprocessed)
+
 import time
 import datetime
 import pandas as pd
@@ -45,12 +48,14 @@ class BertRanking:
 
 
     def predication_pipeline(self):
-
+        ##uncomment line 51 when using unpreprocessed data
         #self.__prepare()
 
         # create a sequence of sentences for inputs of BertServer
         # use sentence and aspect content
         sentences_list = self.train_df.sentence.tolist()
+
+        # 2 options
         #aspects_list = self.train_df.aspect_content.tolist()
         aspects_list = self.train_df.aspect.tolist()
 

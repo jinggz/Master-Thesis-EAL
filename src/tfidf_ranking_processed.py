@@ -1,5 +1,7 @@
+# this file is to run tfidf ranking using preprocessed data to save time (cleaned tsv)
+# input file: cleaned_[customer].tsv
+
 import pandas as pd
-import json
 import os
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
@@ -7,8 +9,6 @@ import pickle
 import numpy as np
 import logging
 
-import filter_sentences
-import nlp_preprocessing
 
 logger = logging.getLogger('main')
 logging.basicConfig(

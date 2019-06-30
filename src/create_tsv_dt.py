@@ -1,11 +1,12 @@
+# this code is to create the final training datasets
+# input: context_[customer].json
+# output: labeled_[customer].tsv
+
 import os
-import re
 from pathlib import Path
 import json
 import logging
 import csv
-import pandas as pd
-import ahocorasick
 from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
