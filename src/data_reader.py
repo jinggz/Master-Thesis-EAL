@@ -1,3 +1,7 @@
+# this code is to parsing raw data to get sentence data.
+# input file: [bothlink.txt, objlink.txt, subjlink.txt]
+# output file: sentence data
+
 import os
 import re
 from pathlib import Path
@@ -80,34 +84,29 @@ class ObjReader(DataReader):
     def __init__(self):
         self.placeholder = ('ObjLink')
 
-class BothJReader(DataReader):
-    # todo. have to differentiate 2 types of link
-    def __init__(self):
-        self.placeholder = ('ObjLink')
-
-
 if __name__ == '__main__':
-    os.environ['customer'] = 'both'
-    if os.getenv('customer') in ['subj', 'obj', 'both']:
+    #os.environ['customer'] = 'both'
+    if os.getenv('customer') in ['subj', 'obj', 'both_subj', 'both_obj']:
         logger.info('source data  set to ' + os.environ['customer'])
     else:
         raise NameError("""Please set an environment variable to indicate which source to use.\n
         Your options are: customer='subj' or 'obj' or 'both'.\n""")
 
     dir = Path(__file__).parent.parent
-
-    input_file = Path.joinpath(dir, "data", os.environ['customer']+"link.txt")
+    if os.environ['customer'] in ['subj', 'obj']:
+        input_file = Path.joinpath(dir, "data", os.environ['customer']+"link.txt")
+    else:
+        input_file = Path.joinpath(dir, "data", "bothlink.txt")
     output_folder = Path.joinpath(dir, 'trained')
 
     if not Path(output_folder).is_dir():
         Path(output_folder).mkdir()
 
-    if os.environ['customer'] == 'subj':
+    if os.environ['customer'] in ['subj', 'both_subj']:
         reader = SubjReader()
-    elif os.environ['customer'] == 'obj':
+    elif os.environ['customer'] in ['obj', 'both_obj']:
         reader = ObjReader()
-    else:
-        reader = BothJReader()
+
     result = reader.read_raw_data(input_file)
     reader.save2json(Path.joinpath(dir, 'trained', 'sentences_'+os.environ['customer']+'.json'), result)
     logger.info('Saved the data.')

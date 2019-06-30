@@ -1,3 +1,5 @@
+# input file: sentence data and wiki data
+
 import pandas as pd
 import json
 import os

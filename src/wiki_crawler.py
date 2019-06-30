@@ -1,3 +1,6 @@
+# input file: sentence data
+# output file: wiki data
+
 import os
 from pathlib import Path
 import bs4 as bs
@@ -7,7 +10,6 @@ import logging
 import json
 import re
 import html
-from pprint import pprint
 import unicodedata
 from tqdm import tqdm
 

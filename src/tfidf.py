@@ -1,3 +1,5 @@
+# this code is to train a tfidf model
+
 import os
 import logging
 from sklearn.feature_extraction.text import TfidfVectorizer

@@ -1,5 +1,7 @@
+# this file is to run wemb ranking using preprocessed data to save time (cleaned tsv)
+# input file: cleaned_[customer].tsv
+
 import pandas as pd
-import json
 import os
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
