@@ -1,4 +1,4 @@
-# Fine-tuned Entity Aspect Linking System (Repo for my master thesis)
+#  Entity Aspect Linking System (Repo for my master thesis)
 
 ##This repository is used to put my source code of experiments for my master thesis. 
 
